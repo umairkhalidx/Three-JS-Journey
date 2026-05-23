@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/umairkhalidx/Three-JS-Journey#readme",
   "dependencies": {
+    "gsap": "3.12",
     "three": "^0.184.0",
     "vite": "^8.0.14"
   }
