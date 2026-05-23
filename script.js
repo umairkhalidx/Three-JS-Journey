@@ -1,7 +1,16 @@
 import * as THREE from 'three';
 import { Wireframe } from 'three/examples/jsm/Addons.js';
 import gsap from 'gsap'
+import GUI from 'lil-gui'
 
+//Debug
+const gui = new GUI({
+    width: 300,
+    title: 'Debug Menu',
+    closeFolders: false,
+})
+gui.close()
+const debugObject = {}
 
 //Sizes
 const sizes = {
@@ -23,12 +32,38 @@ renderer.domElement.id = "webgl";
 document.body.appendChild(canvas);
 
 //Objects
+debugObject.color = '#ff0000'
 const geometry = new THREE.BoxGeometry( 1, 1, 1, 2, 2, 2 );
-const material = new THREE.MeshBasicMaterial( { /*color: 0x00ff00*/ color: 'red', wireframe: true});
+const material = new THREE.MeshBasicMaterial( { /*color: 0x00ff00*/ color: debugObject.color, wireframe: true});
 const cube = new THREE.Mesh( geometry, material );
 scene.add( cube );
 camera.position.z = 3;
 
+//Lil-GUI Debugging
+const cubeTweaks = gui.addFolder('Cube Properties')
+cubeTweaks.add(cube.position, 'x').min(- 3).max(3).step(0.01).name('x-axis')
+cubeTweaks.add(cube.position, 'y').min(- 3).max(3).step(0.01).name('y-axis')
+cubeTweaks.add(cube.position, 'z').min(- 3).max(3).step(0.01).name('z-axis')
+cubeTweaks.add(cube, 'visible')
+cubeTweaks.add(material, 'wireframe')
+cubeTweaks.addColor(debugObject, 'color').onChange(() =>{
+        material.color.set(debugObject.color)
+    })
+
+debugObject.subdivision=2
+cubeTweaks.add(debugObject, 'subdivision').min(1).max(20).step(1).onFinishChange(() =>{
+        cube.geometry.dispose()
+        cube.geometry = new THREE.BoxGeometry(
+            1, 1, 1,
+            debugObject.subdivision, debugObject.subdivision, debugObject.subdivision
+        )
+    })
+cubeTweaks.close()
+// debugObject.spin = () =>
+// {
+//     gsap.to(cube.rotation, { duration: 1, y: cube.rotation.y + Math.PI * 2 })
+// }
+// cubeTweaks.add(debugObject, 'spin')
 
 //Axes Helper
 const axesHelper = new THREE.AxesHelper(1);
