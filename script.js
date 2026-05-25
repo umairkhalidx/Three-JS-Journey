@@ -3,6 +3,9 @@ import * as THREE from 'three'
 import GUI from 'lil-gui'
 import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js'
 import { TextGeometry } from 'three/examples/jsm/Addons.js'
+import { FontLoader } from 'three/examples/jsm/Addons.js'
+import typefaceFont from 'three/examples/fonts/helvetiker_regular.typeface.json'
+
 
 
 /////////////////////////////////Debug////////////////////////////////
@@ -58,7 +61,8 @@ const scene = new THREE.Scene()
 
 const camera = new THREE.PerspectiveCamera( 75, sizes.width / sizes.height, 0.1, 100 )
 // camera.position.set(-10, -0.5, -5)
-camera.position.set(-8, -0.35, -4.5)
+// camera.position.set(-8, -0.35, -4.5)
+camera.position.set(-26, -0.5, -14)
 camera.lookAt(0, 0, 0)
 
 scene.add(camera)
@@ -223,6 +227,16 @@ const extrudeSettings = {
 }
 geometries.Extrude = new THREE.ExtrudeGeometry(shape, extrudeSettings)
 
+//Shape Geometry
+const heartShape = new THREE.Shape()
+const x = 0
+const y = 0
+heartShape.moveTo(x + 0, y + 2)
+heartShape.bezierCurveTo(x + 2, y + 4, x + 4, y + 2, x + 0, y - 2)
+heartShape.bezierCurveTo(x - 4, y + 2, x - 2, y + 4, x + 0, y + 2)
+
+geometries.Shape= new THREE.ShapeGeometry(heartShape)
+
 
 //Geometry
 const geometry = geometries.Torus
@@ -269,7 +283,8 @@ gui.add(geometrySettings, 'geometry', [
     'Plane',
     'Lathe',
     'Tube',
-    'Extrude'
+    'Extrude',
+    'Shape'
 ])
 .onChange((value) =>
 {
@@ -415,6 +430,89 @@ matcapMaterial.matcap = matcapTexture
 
 
 
+/////////////////////////////////Fonts////////////////////////////////
+const fonts = []
+const fontFolders = []
+const fontFolder = gui.addFolder('Fonts')
+
+const fontLoader = new FontLoader()
+
+function createText({
+    text,
+    fontPath,
+    size,
+    depth,
+    position,
+    rotation,
+    folderName
+})
+{
+    fontLoader.load(fontPath, (font) =>
+    {
+        const geometry = new TextGeometry(text, {
+            font: font,
+            size: size,
+            depth: depth,
+            curveSegments: 12,
+            bevelEnabled: true,
+            bevelThickness: 0.03,
+            bevelSize: 0.02,
+            bevelOffset: 0,
+            bevelSegments: 5
+        })
+
+        const material = new THREE.MeshMatcapMaterial({
+            map: matcapTexture
+        })
+
+        const mesh = new THREE.Mesh(geometry, material)
+
+        geometry.center()
+
+        mesh.position.set(position.x, position.y, position.z)
+
+        mesh.rotation.set(rotation.x, rotation.y, rotation.z)
+
+        scene.add(mesh)
+
+        fonts.push(mesh)
+
+        // GUI
+        const folder = fontFolder.addFolder(folderName)
+
+        folder.add(mesh.position, 'x', -100, 100, 0.1)
+        folder.add(mesh.position, 'y', -100, 100, 0.1)
+        folder.add(mesh.position, 'z', -100, 100, 0.1)
+    })
+}
+
+const degToRad = (deg) => deg * Math.PI / 180
+
+createText({
+    text: 'Mesh Materials in Three.js',
+    fontPath: './static/fonts/helvetiker_regular.typeface.json',
+    size: 6,
+    depth: 0.5,
+    position: { x: 18, y: 25, z: 12 },
+    rotation: { x: 0, y: -2.0, z: degToRad(0.8) },
+    folderName: 'Title Text'
+})
+
+createText({
+    text: 'Documentation',
+    fontPath: './static/fonts/helvetiker_regular.typeface.json',
+    size: 0.3,
+    depth: 0,
+    position: { x: -20, y: -3, z: -16 },
+    rotation: { x: 0, y: -2.0, z: degToRad(-2) },
+    folderName: 'Documentation Text'
+})
+
+/////////////////////////////////////////////////////////////////////
+
+
+
+
 /////////////////////////////////Animations///////////////////////////
 const clock = new THREE.Clock()
 
@@ -427,14 +525,30 @@ const tick = () =>{
     controls.update()
 
     //Rotate Objects
-    scene.children.forEach((child) =>
-    {
-        if(child instanceof THREE.Mesh)
-        {
-            child.rotation.y += 0.01
-            child.rotation.x += 0.005
-        }
-    })
+    // scene.children.forEach((child) =>
+    // {
+    //     if(child instanceof THREE.Mesh && !child.userData.isFont)
+    //     {
+    //         child.rotation.y += 0.01
+    //         child.rotation.x += 0.005
+    //     }
+    // })
+    const rotatingMeshes = [
+    basicMesh,
+    depthMesh,
+    lambertMesh,
+    matcapMesh,
+    normalMesh,
+    phongMesh,
+    physicalMesh,
+    standardMesh,
+    toonMesh
+]
+rotatingMeshes.forEach((mesh) =>
+{
+    mesh.rotation.y += 0.01
+    mesh.rotation.x += 0.005
+})
 
     //Rerender the scene
     renderer.render(scene,camera)
