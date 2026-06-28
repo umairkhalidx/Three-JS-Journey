@@ -1,5 +1,7 @@
 import * as THREE from 'three'
-import gsap from 'gsap'
+import { gsap } from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+gsap.registerPlugin(ScrollTrigger)
 
 // Reset scroll position on reload so it always starts at the top
 if ('scrollRestoration' in history) {
@@ -25,7 +27,28 @@ window.addEventListener('load', () => {
             lottiePlayer.pause()
         }
         loadingScreen.classList.add('fade-out')
-    }, 1500) // 1.5 seconds delay before fading out
+        
+        // Grand Entrance Animation (starts right as loading screen fades)
+        gsap.to(donut.scale, {
+            x: donut.userData.targetScale, 
+            y: donut.userData.targetScale, 
+            z: donut.userData.targetScale,
+            duration: 3.5,
+            ease: "elastic.out(1, 0.5)",
+            delay: 1.2,
+            onComplete: () => { donutState.hasEntered = true }
+        })
+        
+        // Dramatic entrance spin
+        donutSpinWrapper.rotation.y = -Math.PI
+        gsap.to(donutSpinWrapper.rotation, {
+            y: 0,
+            duration: 4.5,
+            ease: "power2.out",
+            delay: 1.2
+        })
+        
+    }, 2500) // 2.5 seconds delay before fading out
 })
 
 // Scene
@@ -41,10 +64,16 @@ const doughMaterial = new THREE.MeshStandardMaterial({ color: '#e0a96d', roughne
 const icingGeometry = new THREE.TorusGeometry(1, 0.57, 32, 64)
 const posAttribute = icingGeometry.attributes.position
 const vertex = new THREE.Vector3()
+
+// Procedurally deform the bottom half of the icing torus to simulate dripping glaze
 for (let i = 0; i < posAttribute.count; i++) {
     vertex.fromBufferAttribute(posAttribute, i)
+
+    // Only deform vertices on the bottom half (z < 0 in local space before laying flat)
     if (vertex.z < 0) {
+        // Calculate the angle around the torus tube
         const angle = Math.atan2(vertex.y, vertex.x)
+        // Add a sine wave displacement to create organic, uneven drips
         vertex.z = Math.max(vertex.z, -0.05 + Math.sin(angle * 12) * 0.08)
     }
     posAttribute.setXYZ(i, vertex.x, vertex.y, vertex.z)
@@ -52,11 +81,21 @@ for (let i = 0; i < posAttribute.count; i++) {
 icingGeometry.computeVertexNormals()
 
 const drizzleMaterial = new THREE.MeshPhysicalMaterial({ color: '#3d1c04', roughness: 0.1, metalness: 0.1, clearcoat: 1.0 })
+
+/**
+ * Procedurally generates a wavy 3D tube for the drizzle toppings.
+ * Uses a CatmullRomCurve3 path wrapped around the torus shape.
+ */
 const createDrizzleRing = (baseTubeAngle, waveFreq, waveAmp, thickness) => {
     const points = []
-    for(let i = 0; i <= 60; i++) {
+    for (let i = 0; i <= 60; i++) {
+        // Calculate angle around the main circle of the donut
         const angle = (i / 60) * Math.PI * 2
+
+        // Add a sine wave displacement for an organic zig-zag pattern
         const tubeAngle = baseTubeAngle + Math.sin(angle * waveFreq) * waveAmp
+
+        // Map the 2D path onto the 3D surface of the torus (R=1, r=0.58)
         points.push(new THREE.Vector3((1 + 0.58 * Math.cos(tubeAngle)) * Math.cos(angle), (1 + 0.58 * Math.cos(tubeAngle)) * Math.sin(angle), 0.58 * Math.sin(tubeAngle)))
     }
     return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points, true), 150, thickness, 8, true)
@@ -68,19 +107,39 @@ const drizzleGeom3 = createDrizzleRing(Math.PI * 0.3, 5, 0.1, 0.02)
 const generateSprinkles = (count, radius, length) => {
     const group = new THREE.Group()
     const geom = new THREE.CapsuleGeometry(radius, length, 4, 8)
-    const mat = new THREE.MeshPhysicalMaterial({ roughness: 0.1, clearcoat: 1.0, metalness: 0.05 })
     const colors = ['#ffffff', '#44ccff', '#ffeb3b', '#33ff33', '#ff33cc']
-    for(let i = 0; i < count; i++) {
-        const mesh = new THREE.Mesh(geom, mat.clone())
-        mesh.material.color = new THREE.Color(colors[Math.floor(Math.random() * colors.length)])
+
+    // Create an array of 5 shared materials to drastically reduce memory usage
+    // instead of creating hundreds of unique MeshPhysicalMaterials.
+    const materials = colors.map(colorHex => new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(colorHex),
+        roughness: 0.1,
+        clearcoat: 1.0,
+        metalness: 0.05
+    }))
+
+    for (let i = 0; i < count; i++) {
+        // Randomly pick one of the 5 shared materials
+        const mesh = new THREE.Mesh(geom, materials[Math.floor(Math.random() * materials.length)])
+
+        // Randomize position across the top half of the torus
         const angle = Math.random() * Math.PI * 2
         const tubeAngle = Math.random() * Math.PI
-        const R = 1, r = 0.57
+        const R = 1, r = 0.57 // Main radius and tube radius
+
+        // Map spherical coordinates to torus surface
         mesh.position.set((R + r * Math.cos(tubeAngle)) * Math.cos(angle), (R + r * Math.cos(tubeAngle)) * Math.sin(angle), r * Math.sin(tubeAngle))
+
+        // Calculate the surface normal vector to align the sprinkle flat against the curved dough
         const normal = new THREE.Vector3(Math.cos(tubeAngle) * Math.cos(angle), Math.cos(tubeAngle) * Math.sin(angle), Math.sin(tubeAngle)).normalize()
         mesh.quaternion.copy(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal))
+
+        // Randomly rotate the sprinkle on its own local Z axis
         mesh.rotateZ(Math.random() * Math.PI)
+
+        // Push the sprinkle slightly deeper into the icing so it doesn't float above it
         mesh.position.sub(normal.multiplyScalar(radius * 0.6))
+
         group.add(mesh)
     }
     return group
@@ -90,50 +149,75 @@ const generateSprinkles = (count, radius, length) => {
 const createDonut = (targetLayer) => {
     const donutGroup = new THREE.Group()
 
-    const dough = new THREE.Mesh(doughGeometry, doughMaterial)
-    donutGroup.add(dough)
+    const doughMesh = new THREE.Mesh(doughGeometry, doughMaterial)
 
     const donutMaterial = new THREE.MeshPhysicalMaterial({ color: '#D2A679', roughness: 0.1, metalness: 0.02, clearcoat: 1.0, clearcoatRoughness: 0.1 })
-    const icing = new THREE.Mesh(icingGeometry, donutMaterial)
-    donutGroup.add(icing)
+    const icingMesh = new THREE.Mesh(icingGeometry, donutMaterial)
 
     const chocolateToppings = generateSprinkles(150, 0.025, 0.08)
-    donutGroup.add(chocolateToppings)
-
     const lemonToppings = generateSprinkles(50, 0.05, 0.15)
     lemonToppings.visible = false
-    donutGroup.add(lemonToppings)
 
     const strawberryToppings = new THREE.Group()
     strawberryToppings.add(new THREE.Mesh(drizzleGeom1, drizzleMaterial))
     strawberryToppings.add(new THREE.Mesh(drizzleGeom2, drizzleMaterial))
     strawberryToppings.add(new THREE.Mesh(drizzleGeom3, drizzleMaterial))
     strawberryToppings.visible = false
-    donutGroup.add(strawberryToppings)
+    const toppingsGroup = new THREE.Group()
+    toppingsGroup.add(chocolateToppings)
+    toppingsGroup.add(strawberryToppings)
+    toppingsGroup.add(lemonToppings)
+
+    donutGroup.add(doughMesh)
+    donutGroup.add(icingMesh)
+    donutGroup.add(toppingsGroup)
+
+    donutGroup.rotation.x = 0.3
+    donutGroup.rotation.y = -0.3
 
     // Set all meshes to target layer
-    donutGroup.traverse(child => { if(child.isMesh) child.layers.set(targetLayer) })
-    
-    scene.add(donutGroup)
+    donutGroup.traverse(child => { if (child.isMesh) child.layers.set(targetLayer) })
 
-    return { donut: donutGroup, donutMaterial, chocolateToppings, strawberryToppings, lemonToppings }
+    return { donut: donutGroup, donutMaterial, chocolateToppings, strawberryToppings, lemonToppings, dough: doughMesh, icing: icingMesh, toppings: toppingsGroup }
 }
 
 // 1. Create Main Donut (Layer 0)
-const mainData = createDonut(0)
-const donut = mainData.donut
-const donutMaterial = mainData.donutMaterial
-const chocolateToppings = mainData.chocolateToppings
-const strawberryToppings = mainData.strawberryToppings
-const lemonToppings = mainData.lemonToppings
+const mainDonutData = createDonut(0)
+const donutGroup = mainDonutData.donut
+const donutMaterial = mainDonutData.donutMaterial
+const chocolateToppings = mainDonutData.chocolateToppings
+const strawberryToppings = mainDonutData.strawberryToppings
+const lemonToppings = mainDonutData.lemonToppings
 
-// Apply default tilt rotation to the main donut only
-donut.rotation.x = Math.PI * 0.2
+const dough = mainDonutData.dough
+const icing = mainDonutData.icing
+const toppings = mainDonutData.toppings
 
-// Responsive calculations for precise multi-resolution alignment
+// Wrappers for independent animation layers
+const donutSpinWrapper = new THREE.Group()
+donutSpinWrapper.add(donutGroup)
+
+const donutTiltWrapper = new THREE.Group()
+donutTiltWrapper.add(donutSpinWrapper)
+
+const donut = new THREE.Group() // Position wrapper
+donut.add(donutTiltWrapper)
+donut.scale.set(0, 0, 0) // Hide initially behind loading screen
+scene.add(donut)
+
+const donutState = { isSpinning: true, hasEntered: false }
+
+// Apply default rotation to the main donut geometry
+donutGroup.rotation.x = 0
+donutGroup.rotation.y = -0.4 // Facing slightly left
+
+/**
+ * Responsive calculations for precise multi-resolution alignment.
+ * Calculates the exact physical width of the camera's view plane at z=0.
+ */
 const getWidthAtZ0 = () => {
     const vFov = 35 * Math.PI / 180
-    const heightAtZ0 = 2 * Math.tan(vFov / 2) * 6
+    const heightAtZ0 = 2 * Math.tan(vFov / 2) * 6 // 6 is camera.position.z
     return heightAtZ0 * (window.innerWidth / window.innerHeight)
 }
 
@@ -141,26 +225,42 @@ const getWidthAtZ0 = () => {
 const setDonutPosition = () => {
     const widthAtZ0 = getWidthAtZ0()
     const scaleFactor = window.innerWidth / 1440 // Reference desktop width
-    
-    donut.position.x = widthAtZ0 * 0.22
-    donut.position.y = -0.15 * scaleFactor
-    donut.userData.baseY = -0.15 * scaleFactor
-    
+
+    // Keep the donut locked to the right side of the screen proportionally
+    donut.userData.section1X = widthAtZ0 * 0.22
+    donut.userData.section1Y = -0.15 * scaleFactor
+
+    if (window.scrollY < window.innerHeight / 2) {
+        donut.position.x = donut.userData.section1X
+        donut.position.y = donut.userData.section1Y
+        donut.userData.baseY = donut.userData.section1Y
+    }
+
     const scale = 0.8 * scaleFactor
-    donut.scale.set(scale, scale, scale)
+    donut.userData.targetScale = scale
+    
+    // Only snap the scale instantly if the entrance animation has finished
+    if (donutState.hasEntered) {
+        donut.scale.set(scale, scale, scale)
+    }
 }
 setDonutPosition()
 
 // 2. Create UI Donuts (Layers 1, 2, 3)
 const uiDonuts = []
 const flavorHexes = ['#D2A679', '#FFB6C1', '#FFF59D']
-for(let i = 0; i < 3; i++) {
+for (let i = 0; i < 3; i++) {
     const uiData = createDonut(i + 1)
     uiData.donutMaterial.color.set(flavorHexes[i])
     uiData.chocolateToppings.visible = (i === 0)
     uiData.strawberryToppings.visible = (i === 1)
     uiData.lemonToppings.visible = (i === 2)
+
+    // Reset rotation so the UI donuts face perfectly straight towards the camera
+    uiData.donut.rotation.set(0, 0, 0)
+
     uiDonuts.push(uiData.donut)
+    scene.add(uiData.donut)
 }
 
 /**
@@ -233,7 +333,13 @@ flavors.forEach((flavor, index) => {
             onComplete: () => {
                 // Change color instantly while offscreen
                 donutMaterial.color.copy(newColor)
-                
+
+                // Reset rotation to default so the incoming donut faces perfectly forward
+                donutGroup.rotation.set(0, -0.4, 0)
+                donutTiltWrapper.rotation.set(0, 0, 0)
+                donutSpinWrapper.rotation.x = 0
+                donutSpinWrapper.rotation.y = 0
+
                 // Toggle topping visibility based on selected flavor index
                 // 0: Brown (Chocolate Toppings), 1: Pink (Strawberry Drizzles), 2: Yellow (Lemon Big Sprinkles)
                 chocolateToppings.visible = index === 0
@@ -258,8 +364,8 @@ flavors.forEach((flavor, index) => {
 
         // Add a fun spin while it slides (spins in direction of slide)
         const spinDirection = index > currentIndex ? 1 : -1;
-        gsap.to(donut.rotation, {
-            z: donut.rotation.z + Math.PI * 2 * spinDirection,
+        gsap.to(donutSpinWrapper.rotation, {
+            z: donutSpinWrapper.rotation.z + Math.PI * 2 * spinDirection,
             duration: 1.4,
             ease: "power2.inOut"
         })
@@ -334,17 +440,176 @@ window.addEventListener('mouseup', () => {
 })
 
 window.addEventListener('mousemove', (event) => {
-    if (isDragging) {
+    // Only allow manual rotation dragging when in the Hero section (isSpinning = true)
+    if (isDragging && donutState.isSpinning) {
         const deltaX = event.clientX - previousMousePosition.x
         const deltaY = event.clientY - previousMousePosition.y
 
-        // Rotate the donut directly (spinning it in place)
-        donut.rotation.y += deltaX * 0.01
-        donut.rotation.x += deltaY * 0.01
+        // Rotate the wrappers independently to avoid Gimbal lock/axis mixing
+        donutSpinWrapper.rotation.y += deltaX * 0.01
+        donutTiltWrapper.rotation.x += deltaY * 0.01
+
+        // Clamp the vertical tilt to safely keep the donut upright and avoid Gimbal lock poles
+        // Allowing a wide range: -120 degrees to +49 degrees (accounting for the 36deg default tilt)
+        donutTiltWrapper.rotation.x = Math.max(-2.1, Math.min(0.85, donutTiltWrapper.rotation.x))
 
         previousMousePosition = { x: event.clientX, y: event.clientY }
     }
 })
+
+/**
+ * ScrollTrigger Animations (Section 2 Exploded Anatomy)
+ */
+
+// Utility to find the nearest equivalent angle for smooth GSAP rotational transitions
+// This prevents wild multi-spins if the user drags the donut heavily before scrolling
+const getNearestAngle = (currentAngle, targetAngle) => {
+    let diff = (targetAngle - currentAngle) % (Math.PI * 2)
+    if (diff > Math.PI) diff -= Math.PI * 2
+    if (diff < -Math.PI) diff += Math.PI * 2
+    return currentAngle + diff
+}
+
+// Timeline 1: The Transition (Laying Flat)
+const tl1 = gsap.timeline({
+    scrollTrigger: {
+        trigger: ".section-2",
+        start: "top bottom", // Starts when section-2 enters viewport from bottom
+        end: "top top",      // Ends when section-2 hits top
+        scrub: true,
+        invalidateOnRefresh: true,
+        onEnter: () => {
+            donutState.isSpinning = false
+
+            // Instantly hide the scroll indicator
+            gsap.to(".scroll-indicator", { opacity: 0, duration: 0.3 })
+
+            // Smoothly transition from whatever random orientation the user dragged/spun it to
+            // using getNearestAngle to ensure it takes the shortest path and doesn't spin wildly
+            gsap.to(donutGroup.rotation, {
+                x: getNearestAngle(donutGroup.rotation.x, -Math.PI / 2),
+                y: getNearestAngle(donutGroup.rotation.y, 0),
+                z: getNearestAngle(donutGroup.rotation.z, 0),
+                duration: 1.2,
+                ease: "power2.inOut",
+                overwrite: "auto"
+            })
+
+            gsap.to(donutSpinWrapper.rotation, {
+                x: getNearestAngle(donutSpinWrapper.rotation.x, 0),
+                y: getNearestAngle(donutSpinWrapper.rotation.y, 0),
+                z: getNearestAngle(donutSpinWrapper.rotation.z, 0),
+                duration: 1.2,
+                ease: "power2.inOut",
+                overwrite: "auto"
+            })
+
+            // Reset the vertical drag tilt back to 0
+            gsap.to(donutTiltWrapper.rotation, {
+                x: getNearestAngle(donutTiltWrapper.rotation.x, 0),
+                duration: 1.2,
+                ease: "power2.inOut",
+                overwrite: "auto"
+            })
+        },
+        onLeaveBack: () => {
+            donutState.isSpinning = true
+
+            // Instantly show the scroll indicator again
+            gsap.to(".scroll-indicator", { opacity: 0.7, duration: 0.3 })
+
+            // Smoothly return to the default orientation when scrolling back up
+            gsap.to(donutGroup.rotation, {
+                x: getNearestAngle(donutGroup.rotation.x, 0),
+                y: getNearestAngle(donutGroup.rotation.y, -0.4),
+                z: getNearestAngle(donutGroup.rotation.z, 0),
+                duration: 1.2,
+                ease: "power2.inOut",
+                overwrite: "auto"
+            })
+        }
+    }
+})
+
+// Move to center
+tl1.fromTo(donut.position, {
+    x: () => donut.userData.section1X
+}, {
+    x: 0,
+    ease: "power2.inOut"
+}, 0)
+
+// Move vertically to the bottom of the viewport so the dough is already at its lowest position
+tl1.to(donut.userData, {
+    baseY: -1.0,
+    ease: "power2.inOut"
+}, 0)
+
+
+
+// Timeline 2: The Explosion (Pinned in Section 2)
+const tl2 = gsap.timeline({
+    scrollTrigger: {
+        trigger: ".section-2",
+        start: "top top",
+        end: "+=600%", // Pins for 600% of viewport height (very slow, dramatic scroll)
+        scrub: true,
+        pin: true
+    }
+})
+
+// 1. Sprinkles move up
+tl2.to(toppings.position, {
+    z: 2.4, // Increased to compensate for the lower base position
+    ease: "power1.inOut",
+    duration: 0.5
+}, 0.0)
+
+// 2. Sprinkles text appears AFTER sprinkles finish moving
+tl2.to(".anatomy-sprinkles", {
+    opacity: 1,
+    y: 0,
+    ease: "power1.out",
+    duration: 0.5
+}, 0.5)
+
+// 3. Frosting moves up AFTER sprinkles text appears
+tl2.to(icing.position, {
+    z: 1.2, // Increased so frosting sits higher up
+    ease: "power1.inOut",
+    duration: 0.5
+}, 1.0)
+
+// 4. Frosting text appears AFTER frosting finishes moving
+tl2.to(".anatomy-icing", {
+    opacity: 1,
+    y: 0,
+    ease: "power1.out",
+    duration: 0.5
+}, 1.5)
+
+// 5. Dough text appears (dough no longer drops, it's already at the bottom)
+tl2.to(".anatomy-dough", {
+    opacity: 1,
+    y: 0,
+    ease: "power1.out",
+    duration: 0.5
+}, 2.0)
+
+// Timeline 3: Scroll out of view for Section 3
+const tl3 = gsap.timeline({
+    scrollTrigger: {
+        trigger: ".section-3",
+        start: "top bottom", // Starts when section-3 enters viewport
+        end: "top top",      // Ends when section-3 fills the screen
+        scrub: true
+    }
+})
+
+tl3.to(donut.userData, {
+    baseY: 4, // Move donut up and off the screen synchronously with the scroll
+    ease: "none"
+}, 0)
 
 /**
  * Renderer
@@ -369,11 +634,12 @@ const tick = () => {
     const elapsedTime = currentTime / 1000 // Convert to seconds
 
     // Animate Main Donut (Frame-rate independent)
-    if (!isDragging && !isAnimating) {
-        donut.rotation.y += 0.18 * (deltaTime / 1000)
+    // Auto-spin main donut
+    if (!isDragging && donutState.isSpinning) {
+        donutSpinWrapper.rotation.y += 0.18 * (deltaTime / 1000)
     }
     const baseY = donut.userData.baseY !== undefined ? donut.userData.baseY : 0
-    donut.position.y = baseY + Math.sin(elapsedTime * 1.5) * 0.05 
+    donut.position.y = baseY + Math.sin(elapsedTime * 1.5) * 0.05
 
     // Auto-clear must be false for scissor rendering multiple viewports
     renderer.autoClear = false
@@ -389,24 +655,30 @@ const tick = () => {
 
     // 2. Render UI Donuts (Layers 1, 2, 3)
     renderer.setScissorTest(true)
-    flavors.forEach((el, index) => {
-        const rect = el.getBoundingClientRect()
-        // Account for scroll offset since canvas is position: absolute
-        const canvasLeft = rect.left + window.scrollX
-        const canvasBottom = sizes.height - (rect.bottom + window.scrollY)
 
-        // Only render if visible on screen
-        if(rect.width > 0 && rect.height > 0) {
+    flavors.forEach((el, index) => {
+        // Since we are only doing DOM reads and NO DOM writes in this loop,
+        // calling getBoundingClientRect does NOT cause layout thrashing and is very fast!
+        // This instantly supports CSS hover states, transforms, and transitions!
+        const rect = el.getBoundingClientRect()
+        const top = rect.top
+        const bottom = rect.bottom
+
+        // Only render if visible on screen (frustum culling)
+        if (rect.width > 0 && rect.height > 0 && bottom > 0 && top < sizes.height) {
+            const canvasLeft = rect.left
+            const canvasBottom = sizes.height - bottom
+
             renderer.setViewport(canvasLeft, canvasBottom, rect.width, rect.height)
             renderer.setScissor(canvasLeft, canvasBottom, rect.width, rect.height)
-            
+
             // Temporarily set camera aspect to match the HTML box
             camera.aspect = rect.width / rect.height
             camera.updateProjectionMatrix()
-            
+
             camera.layers.set(index + 1)
             // UI donuts remain static and fixed facing forward to match the reference design
-            
+
             renderer.render(scene, camera)
         }
     })
@@ -433,3 +705,16 @@ window.addEventListener('touchmove', (e) => {
         e.preventDefault()
     }
 }, { passive: false })
+
+/**
+ * Smooth scroll to top for footer links
+ */
+document.querySelectorAll('a[href="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+});

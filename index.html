@@ -6,14 +6,14 @@
     <title>Three.js Journey</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
     <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 </head>
 <body>
     <!-- Loading Screen -->
     <div class="loading-screen">
-        <lottie-player src="/Donut Loader.json" background="transparent" speed="1" style="width: 300px; height: 300px;" loop autoplay></lottie-player>
+        <lottie-player src="/Donut Loader.json" background="transparent" speed="0.6" style="width: 300px; height: 300px;" loop autoplay></lottie-player>
     </div>
 
     <canvas class="webgl"></canvas>
@@ -42,10 +42,28 @@
                 <div class="flavor flavor-yellow" data-color="#FFF59D"></div>
             </div>
         </div>
+        
+        <!-- Scroll Indicator -->
+        <div class="scroll-indicator">
+            <p>Scroll down</p>
+        </div>
     </section>
 
-    <section class="section section-2">
-        <!-- Section 2 -->
+    <section class="section-2">
+        <div class="anatomy-container">
+            <div class="anatomy-text anatomy-sprinkles">
+                <h3>Custom Toppings</h3>
+                <p>A fun, crunchy finish tailored to perfectly complement each unique flavor profile.</p>
+            </div>
+            <div class="anatomy-text anatomy-icing">
+                <h3>The Perfect Glaze</h3>
+                <p>Hand-dipped daily in rich, premium chocolate and finished with custom toppings for that perfect glossy snap.</p>
+            </div>
+            <div class="anatomy-text anatomy-dough">
+                <h3>Signature 24hr Dough</h3>
+                <p>Expertly kneaded and proofed overnight to develop a complex flavor profile and an unbelievably fluffy interior.</p>
+            </div>
+        </div>
     </section>
 
     <section class="section section-3">
