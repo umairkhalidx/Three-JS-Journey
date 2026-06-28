@@ -140,11 +140,14 @@ const getWidthAtZ0 = () => {
 // Position and scale based on screen size (Main Donut)
 const setDonutPosition = () => {
     const widthAtZ0 = getWidthAtZ0()
-    if (window.innerWidth < 768) {
-        donut.position.x = 0; donut.position.y = -0.6; donut.userData.baseY = -0.6; donut.scale.set(0.6, 0.6, 0.6)
-    } else {
-        donut.position.x = widthAtZ0 * 0.22; donut.position.y = -0.15; donut.userData.baseY = -0.15; donut.scale.set(0.8, 0.8, 0.8)
-    }
+    const scaleFactor = window.innerWidth / 1440 // Reference desktop width
+    
+    donut.position.x = widthAtZ0 * 0.22
+    donut.position.y = -0.15 * scaleFactor
+    donut.userData.baseY = -0.15 * scaleFactor
+    
+    const scale = 0.8 * scaleFactor
+    donut.scale.set(scale, scale, scale)
 }
 setDonutPosition()
 
@@ -187,7 +190,7 @@ flavors.forEach((flavor, index) => {
         const widthAtZ0 = getWidthAtZ0()
         const slideOutX = index > currentIndex ? -(widthAtZ0 * 0.8) : (widthAtZ0 * 0.8);
         const teleportX = index > currentIndex ? (widthAtZ0 * 0.8) : -(widthAtZ0 * 0.8);
-        const centerX = window.innerWidth < 768 ? 0 : widthAtZ0 * 0.22; // Target center position based on screen size
+        const centerX = widthAtZ0 * 0.22; // Always lock to the same layout position
 
         // 4. Background and Accent Colors matching the flavors
         const bgColors = [

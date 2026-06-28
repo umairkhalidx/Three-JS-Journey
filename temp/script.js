@@ -1,433 +1,713 @@
+//Libraries
 import * as THREE from 'three'
-import gsap from 'gsap'
+import GUI from 'lil-gui'
+import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js'
+import { TextGeometry } from 'three/examples/jsm/Addons.js'
+import { FontLoader } from 'three/examples/jsm/Addons.js'
+import typefaceFont from 'three/examples/fonts/helvetiker_regular.typeface.json'
 
-// Reset scroll position on reload so it always starts at the top
-if ('scrollRestoration' in history) {
-    history.scrollRestoration = 'manual'
-}
-window.scrollTo(0, 0)
 
-// Canvas
+
+/////////////////////////////////Debug////////////////////////////////
+
+const gui = new GUI({
+    width: 300,
+    title: "Tweaks Menu",
+    closeFolders: true
+})
+gui.close()
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+
+///////////////////////////////Variables//////////////////////////////
+
 const canvas = document.querySelector('canvas.webgl')
-
-/**
- * Loading Screen
- */
-const loadingScreen = document.querySelector('.loading-screen')
-const lottiePlayer = document.querySelector('lottie-player')
-
-window.addEventListener('load', () => {
-    // Add a small delay so the animation can be enjoyed
-    // (since our basic scene currently loads almost instantly!)
-    setTimeout(() => {
-        // Freeze the animation so it doesn't loop awkwardly during the fade transition
-        if (lottiePlayer) {
-            lottiePlayer.pause()
-        }
-        loadingScreen.classList.add('fade-out')
-    }, 1500) // 1.5 seconds delay before fading out
-})
-
-// Scene
-const scene = new THREE.Scene()
-
-/**
- * Objects - Realistic Procedural Donut Factory
- */
-// Reusable geometries/materials to save memory
-const doughGeometry = new THREE.TorusGeometry(1, 0.55, 32, 64)
-const doughMaterial = new THREE.MeshStandardMaterial({ color: '#e0a96d', roughness: 0.7, metalness: 0.05 })
-
-const icingGeometry = new THREE.TorusGeometry(1, 0.57, 32, 64)
-const posAttribute = icingGeometry.attributes.position
-const vertex = new THREE.Vector3()
-for (let i = 0; i < posAttribute.count; i++) {
-    vertex.fromBufferAttribute(posAttribute, i)
-    if (vertex.z < 0) {
-        const angle = Math.atan2(vertex.y, vertex.x)
-        vertex.z = Math.max(vertex.z, -0.05 + Math.sin(angle * 12) * 0.08)
-    }
-    posAttribute.setXYZ(i, vertex.x, vertex.y, vertex.z)
-}
-icingGeometry.computeVertexNormals()
-
-const drizzleMaterial = new THREE.MeshPhysicalMaterial({ color: '#3d1c04', roughness: 0.1, metalness: 0.1, clearcoat: 1.0 })
-const createDrizzleRing = (baseTubeAngle, waveFreq, waveAmp, thickness) => {
-    const points = []
-    for(let i = 0; i <= 60; i++) {
-        const angle = (i / 60) * Math.PI * 2
-        const tubeAngle = baseTubeAngle + Math.sin(angle * waveFreq) * waveAmp
-        points.push(new THREE.Vector3((1 + 0.58 * Math.cos(tubeAngle)) * Math.cos(angle), (1 + 0.58 * Math.cos(tubeAngle)) * Math.sin(angle), 0.58 * Math.sin(tubeAngle)))
-    }
-    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points, true), 150, thickness, 8, true)
-}
-const drizzleGeom1 = createDrizzleRing(Math.PI * 0.7, 4, 0.1, 0.02)
-const drizzleGeom2 = createDrizzleRing(Math.PI * 0.5, 3, 0.15, 0.025)
-const drizzleGeom3 = createDrizzleRing(Math.PI * 0.3, 5, 0.1, 0.02)
-
-const generateSprinkles = (count, radius, length) => {
-    const group = new THREE.Group()
-    const geom = new THREE.CapsuleGeometry(radius, length, 4, 8)
-    const mat = new THREE.MeshPhysicalMaterial({ roughness: 0.1, clearcoat: 1.0, metalness: 0.05 })
-    const colors = ['#ffffff', '#44ccff', '#ffeb3b', '#33ff33', '#ff33cc']
-    for(let i = 0; i < count; i++) {
-        const mesh = new THREE.Mesh(geom, mat.clone())
-        mesh.material.color = new THREE.Color(colors[Math.floor(Math.random() * colors.length)])
-        const angle = Math.random() * Math.PI * 2
-        const tubeAngle = Math.random() * Math.PI
-        const R = 1, r = 0.57
-        mesh.position.set((R + r * Math.cos(tubeAngle)) * Math.cos(angle), (R + r * Math.cos(tubeAngle)) * Math.sin(angle), r * Math.sin(tubeAngle))
-        const normal = new THREE.Vector3(Math.cos(tubeAngle) * Math.cos(angle), Math.cos(tubeAngle) * Math.sin(angle), Math.sin(tubeAngle)).normalize()
-        mesh.quaternion.copy(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal))
-        mesh.rotateZ(Math.random() * Math.PI)
-        mesh.position.sub(normal.multiplyScalar(radius * 0.6))
-        group.add(mesh)
-    }
-    return group
-}
-
-// Factory to create a Donut on a specific layer
-const createDonut = (targetLayer) => {
-    const donutGroup = new THREE.Group()
-
-    const dough = new THREE.Mesh(doughGeometry, doughMaterial)
-    donutGroup.add(dough)
-
-    // Softer frosting (less reflective than before, but not completely flat)
-    const donutMaterial = new THREE.MeshStandardMaterial({ color: '#D2A679', roughness: 0.65, metalness: 0.0 })
-    const icing = new THREE.Mesh(icingGeometry, donutMaterial)
-    donutGroup.add(icing)
-
-    const chocolateToppings = generateSprinkles(150, 0.025, 0.08)
-    donutGroup.add(chocolateToppings)
-
-    const lemonToppings = generateSprinkles(50, 0.05, 0.15)
-    lemonToppings.visible = false
-    donutGroup.add(lemonToppings)
-
-    const strawberryToppings = new THREE.Group()
-    strawberryToppings.add(new THREE.Mesh(drizzleGeom1, drizzleMaterial))
-    strawberryToppings.add(new THREE.Mesh(drizzleGeom2, drizzleMaterial))
-    strawberryToppings.add(new THREE.Mesh(drizzleGeom3, drizzleMaterial))
-    strawberryToppings.visible = false
-    donutGroup.add(strawberryToppings)
-
-    // Set all meshes to target layer
-    donutGroup.traverse(child => { if(child.isMesh) child.layers.set(targetLayer) })
-    
-    scene.add(donutGroup)
-
-    return { donut: donutGroup, donutMaterial, chocolateToppings, strawberryToppings, lemonToppings }
-}
-
-// 1. Create Main Donut (Layer 0)
-const mainData = createDonut(0)
-const donut = mainData.donut
-const donutMaterial = mainData.donutMaterial
-const chocolateToppings = mainData.chocolateToppings
-const strawberryToppings = mainData.strawberryToppings
-const lemonToppings = mainData.lemonToppings
-
-// Apply default tilt rotation to the main donut only
-donut.rotation.x = Math.PI * 0.2
-
-// Responsive calculations for precise multi-resolution alignment
-const getWidthAtZ0 = () => {
-    const vFov = 35 * Math.PI / 180
-    const heightAtZ0 = 2 * Math.tan(vFov / 2) * 6
-    return heightAtZ0 * (window.innerWidth / window.innerHeight)
-}
-
-// Position and scale based on screen size (Main Donut)
-const setDonutPosition = () => {
-    const widthAtZ0 = getWidthAtZ0()
-    if (window.innerWidth < 768) {
-        donut.position.x = 0; donut.position.y = -0.6; donut.userData.baseY = -0.6; donut.scale.set(0.6, 0.6, 0.6)
-    } else {
-        donut.position.x = widthAtZ0 * 0.22; donut.position.y = -0.15; donut.userData.baseY = -0.15; donut.scale.set(0.8, 0.8, 0.8)
-    }
-}
-setDonutPosition()
-
-// 2. Create UI Donuts (Layers 1, 2, 3)
-const uiDonuts = []
-const flavorHexes = ['#D2A679', '#FFB6C1', '#FFF59D']
-for(let i = 0; i < 3; i++) {
-    const uiData = createDonut(i + 1)
-    uiData.donutMaterial.color.set(flavorHexes[i])
-    uiData.chocolateToppings.visible = (i === 0)
-    uiData.strawberryToppings.visible = (i === 1)
-    uiData.lemonToppings.visible = (i === 2)
-    uiDonuts.push(uiData.donut)
-}
-
-/**
- * UI Interactions
- */
-const flavors = document.querySelectorAll('.flavor')
-const heroTitle = document.querySelector('.hero-content h1')
-let isAnimating = false
-let currentIndex = 0 // Track current flavor index
-
-flavors.forEach((flavor, index) => {
-    flavor.addEventListener('click', () => {
-        if (isAnimating) return
-        if (index === currentIndex) return // Don't animate if clicking same flavor
-
-        isAnimating = true
-
-        // 1. Update active UI class
-        flavors.forEach(f => f.classList.remove('active'))
-        flavor.classList.add('active')
-
-        // 2. Get the new color from data attribute
-        const newColorHex = flavor.dataset.color
-        const newColor = new THREE.Color(newColorHex)
-
-        // 3. Determine animation direction (responsive to aspect ratio)
-        const widthAtZ0 = getWidthAtZ0()
-        const slideOutX = index > currentIndex ? -(widthAtZ0 * 0.8) : (widthAtZ0 * 0.8);
-        const teleportX = index > currentIndex ? (widthAtZ0 * 0.8) : -(widthAtZ0 * 0.8);
-        const centerX = window.innerWidth < 768 ? 0 : widthAtZ0 * 0.22; // Target center position based on screen size
-
-        // 4. Background and Accent Colors matching the flavors
-        const bgColors = [
-            { main: '#dcbfa6', glow: '#fdf8f4', accent: '#4A2511' }, // Brown (Deep Cocoa)
-            { main: '#f4b8c2', glow: '#ffe6ea', accent: '#90203F' }, // Pink (Deep Berry)
-            { main: '#f7e28f', glow: '#fffced', accent: '#8A6D00' }  // Yellow (Deep Gold)
-        ]
-
-        // 5. Flavor Names
-        const flavorNames = [
-            "Chocolate<br>Heaven",
-            "Strawberry<br>Bliss",
-            "Banana<br>Delight"
-        ]
-
-        // Animate background and accent color transition smoothly
-        gsap.to(document.body, {
-            '--bg-main': bgColors[index].main,
-            '--bg-glow': bgColors[index].glow,
-            '--accent-color': bgColors[index].accent,
-            duration: 1.0,
-            ease: "power2.inOut"
-        })
-
-        // Fade out and change title text
-        gsap.to(heroTitle, {
-            opacity: 0,
-            duration: 0.3,
-            onComplete: () => {
-                heroTitle.innerHTML = flavorNames[index]
-                gsap.to(heroTitle, { opacity: 1, duration: 0.5 })
-            }
-        })
-
-        // Slide Out Animation
-        gsap.to(donut.position, {
-            x: slideOutX,
-            duration: 0.6,
-            ease: "power2.in",
-            onComplete: () => {
-                // Change color instantly while offscreen
-                donutMaterial.color.copy(newColor)
-                
-                // Toggle topping visibility based on selected flavor index
-                // 0: Brown (Chocolate Toppings), 1: Pink (Strawberry Drizzles), 2: Yellow (Lemon Big Sprinkles)
-                chocolateToppings.visible = index === 0
-                strawberryToppings.visible = index === 1
-                lemonToppings.visible = index === 2
-
-                // Teleport offscreen to the opposite side
-                donut.position.x = teleportX
-
-                // Slide In Animation
-                gsap.to(donut.position, {
-                    x: centerX, // Back to responsive center
-                    duration: 0.8,
-                    ease: "power2.out",
-                    onComplete: () => {
-                        isAnimating = false
-                        currentIndex = index // Update tracker
-                    }
-                })
-            }
-        })
-
-        // Add a fun spin while it slides (spins in direction of slide)
-        const spinDirection = index > currentIndex ? 1 : -1;
-        gsap.to(donut.rotation, {
-            z: donut.rotation.z + Math.PI * 2 * spinDirection,
-            duration: 1.4,
-            ease: "power2.inOut"
-        })
-    })
-})
-
-/**
- * Lights - Studio Setup
- */
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.4) // Softer ambient
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.5)
-keyLight.position.set(5, 5, 5)
-const rimLight = new THREE.DirectionalLight(0xffffff, 3.0)
-rimLight.position.set(-5, 5, -5)
-const fillLight = new THREE.DirectionalLight(0xffffff, 1.0)
-fillLight.position.set(-5, -2, 5)
-
-// Enable lights on all 4 layers
-const lights = [ambientLight, keyLight, rimLight, fillLight]
-lights.forEach(light => {
-    light.layers.enable(0)
-    light.layers.enable(1)
-    light.layers.enable(2)
-    light.layers.enable(3)
-    scene.add(light)
-})
-
-/**
- * Sizes
- */
 const sizes = {
     width: window.innerWidth,
     height: window.innerHeight
 }
 
-window.addEventListener('resize', () => {
+//////////////////////////////////////////////////////////////////////
+
+
+
+
+/////////////////////////////////Rederer//////////////////////////////
+
+const renderer = new THREE.WebGLRenderer({
+    canvas:canvas,
+})
+renderer.setSize(sizes.width,sizes.height)
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2))
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+
+//////////////////////////////////Scene///////////////////////////////
+
+const scene = new THREE.Scene()
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+
+//////////////////////////////////Camera//////////////////////////////
+
+const camera = new THREE.PerspectiveCamera( 75, sizes.width / sizes.height, 0.1, 100 )
+// camera.position.set(-10, -0.5, -5)
+// camera.position.set(-8, -0.35, -4.5)
+camera.position.set(-26, -0.5, -14)
+camera.lookAt(0, 0, 0)
+
+scene.add(camera)
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+
+///////////////////////////////Controls///////////////////////////////
+
+const controls = new OrbitControls(camera, canvas)
+controls.enableDamping = true
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+
+///////////////////////////////Enviornment////////////////////////////
+
+//Enviornment Options
+const environmentSettings = {
+    environment: 'autumn_field_puresky_2k'
+}
+
+const environmentMaps = {
+    'Street': './static/textures/environmentMap/2k.hdr',
+    'Sky': './static/textures/environmentMap/autumn_field_puresky_2k.hdr',
+    'Train Track': './static/textures/environmentMap/bloem_train_track_clear_2k.hdr',
+    'Altanka': './static/textures/environmentMap/altanka_2k.hdr'
+}
+
+//Loading the Enviornement
+const rgbeLoader = new RGBELoader()
+let currentEnvironmentMap = null
+
+const updateEnvironment = (path) =>
+{
+    rgbeLoader.load(path, (environmentMap) =>
+    {
+        environmentMap.mapping = THREE.EquirectangularReflectionMapping
+
+        if(currentEnvironmentMap)
+        {
+            currentEnvironmentMap.dispose()
+        }
+
+        currentEnvironmentMap = environmentMap
+
+        scene.background = environmentMap
+        scene.environment = environmentMap
+    })
+}
+updateEnvironment(environmentMaps['Sky'])
+
+//Enviornment GUI Options
+gui.add(environmentSettings, 'environment', {
+    Street: 'Street',
+    Sky: 'Sky',
+    TrainTrack: 'Train Track',
+    Altanka: 'Altanka'
+})
+.onChange((value) =>
+{
+    updateEnvironment(environmentMaps[value])
+})
+.name('Environment')
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+
+///////////////////////////////Materials//////////////////////////////
+const basicMaterial = new THREE.MeshBasicMaterial({ color: '#ff5555' })
+const depthMaterial = new THREE.MeshDepthMaterial()
+const lambertMaterial = new THREE.MeshLambertMaterial({ color: '#55ff55' })
+const matcapMaterial = new THREE.MeshMatcapMaterial()
+const normalMaterial = new THREE.MeshNormalMaterial()
+const phongMaterial = new THREE.MeshPhongMaterial({ color: '#5555ff', shininess: 100 })
+const physicalMaterial = new THREE.MeshPhysicalMaterial({ color: '#ffffff', metalness: 0.5, roughness: 0.2, clearcoat: 1 })
+const standardMaterial = new THREE.MeshStandardMaterial({ color: '#ffaa00', metalness: 0.7, roughness: 0.3 })
+const toonMaterial = new THREE.MeshToonMaterial({ color: '#00ffcc' })
+
+//All Materials
+const materials = [
+    { name: 'Basic', material: basicMaterial },
+    { name: 'Depth', material: depthMaterial },
+    { name: 'Lambert', material: lambertMaterial },
+    { name: 'Matcap', material: matcapMaterial },
+    { name: 'Normal', material: normalMaterial },
+    { name: 'Phong', material: phongMaterial },
+    { name: 'Physical', material: physicalMaterial },
+    { name: 'Standard', material: standardMaterial },
+    { name: 'Toon', material: toonMaterial }
+]
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+
+////////////////////////////////Geometries///////////////////////////////
+
+// Geometry Settings
+const geometrySettings = {
+    geometry: 'Torus'
+}
+
+
+// Geometry Options
+const geometries = {
+    Torus: new THREE.TorusGeometry(3, 1.2, 64, 128),
+    Sphere: new THREE.SphereGeometry(3.4, 64, 64),
+    Cube: new THREE.BoxGeometry(5, 5, 5),
+    TorusKnot: new THREE.TorusKnotGeometry(2.4, 0.7, 128, 32),
+    Capsule: new THREE.CapsuleGeometry(1.5, 3, 8, 16),
+    Cone: new THREE.ConeGeometry(3, 6, 64),
+    Cylinder: new THREE.CylinderGeometry(2.5, 2.5, 6, 64),
+    Dodecahedron: new THREE.DodecahedronGeometry(3.2),
+    Icosahedron: new THREE.IcosahedronGeometry(3.2, 0),
+    Octahedron: new THREE.OctahedronGeometry(3.2),
+    Tetrahedron: new THREE.TetrahedronGeometry(3.5),
+    Circle: new THREE.CircleGeometry(3.5, 64),
+    Ring: new THREE.RingGeometry(2.5, 4, 64),
+    Plane: new THREE.PlaneGeometry(7, 7)
+}
+
+//Lathe Geometry
+const lathePoints = []
+for(let i = 0; i < 10; i++)
+{
+    lathePoints.push(
+        new THREE.Vector2(
+            Math.sin(i * 0.2) * 2 + 1.5,
+            (i - 5) * 0.5
+        )
+    )
+}
+geometries.Lathe = new THREE.LatheGeometry(lathePoints, 64)
+
+//Tube Geometry
+const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-4, 0, 0),
+    new THREE.Vector3(-2, 2, 0),
+    new THREE.Vector3(2, 2, 0),
+    new THREE.Vector3(4, 0, 0)
+])
+geometries.Tube = new THREE.TubeGeometry(curve, 64, 0.8, 20, false)
+
+//Extrude Geometry
+const shape = new THREE.Shape()
+shape.absarc(0, 0, 3.5, 0, Math.PI * 2, false)
+
+const extrudeSettings = {
+    depth: 3,
+    bevelEnabled: true,
+    bevelThickness: 0.5,
+    bevelSize: 0.5,
+    bevelSegments: 6
+}
+geometries.Extrude = new THREE.ExtrudeGeometry(shape, extrudeSettings)
+
+//Shape Geometry
+const heartShape = new THREE.Shape()
+const x = 0
+const y = 0
+heartShape.moveTo(x + 0, y + 2)
+heartShape.bezierCurveTo(x + 2, y + 4, x + 4, y + 2, x + 0, y - 2)
+heartShape.bezierCurveTo(x - 4, y + 2, x - 2, y + 4, x + 0, y + 2)
+
+geometries.Shape= new THREE.ShapeGeometry(heartShape)
+
+
+//Geometry
+const geometry = geometries.Torus
+
+
+//Cleanup
+const updateGeometry = (newGeometry) =>
+{
+    const meshes = [
+        basicMesh,
+        depthMesh,
+        lambertMesh,
+        matcapMesh,
+        normalMesh,
+        phongMesh,
+        physicalMesh,
+        standardMesh,
+        toonMesh
+    ]
+
+    meshes.forEach((mesh) =>
+    {
+        mesh.geometry.dispose()
+        mesh.geometry = newGeometry
+    })
+}
+
+
+//Geometry GUI Options
+gui.add(geometrySettings, 'geometry', [
+    'Torus',
+    'Sphere',
+    'Cube',
+    'TorusKnot',
+    'Capsule',
+    'Cone',
+    'Cylinder',
+    'Dodecahedron',
+    'Icosahedron',
+    'Octahedron',
+    'Tetrahedron',
+    'Circle',
+    'Ring',
+    'Plane',
+    'Lathe',
+    'Tube',
+    'Extrude',
+    'Shape'
+])
+.onChange((value) =>
+{
+    updateGeometry(geometries[value])
+})
+.name('Geometry')
+
+/////////////////////////////////////////////////////////////////////
+
+
+
+////////////////////////////////Objects///////////////////////////////
+
+// 1. BASIC
+const basicMesh = new THREE.Mesh(geometry, basicMaterial)
+basicMesh.position.set(0, 4, 32)
+scene.add(basicMesh)
+
+// 2. DEPTH
+const depthMesh = new THREE.Mesh(geometry, depthMaterial)
+depthMesh.position.set(6, 4, 22)
+scene.add(depthMesh)
+
+// 3. LAMBERT
+const lambertMesh = new THREE.Mesh(geometry, lambertMaterial)
+lambertMesh.position.set(10, 4, 12)
+scene.add(lambertMesh)
+
+// 4. MATCAP
+const matcapMesh = new THREE.Mesh(geometry, matcapMaterial)
+matcapMesh.position.set(16, 4, 4)
+scene.add(matcapMesh)
+
+// 5. NORMAL
+const normalMesh = new THREE.Mesh(geometry, normalMaterial)
+normalMesh.position.set(21, 4, -5)
+scene.add(normalMesh)
+
+// 6. PHONG
+const phongMesh = new THREE.Mesh(geometry, phongMaterial)
+phongMesh.position.set(26, 4, -16)
+scene.add(phongMesh)
+
+// 7. PHYSICAL
+const physicalMesh = new THREE.Mesh(geometry, physicalMaterial)
+physicalMesh.position.set(16, -6, 0)
+scene.add(physicalMesh)
+
+// 8. STANDARD
+const standardMesh = new THREE.Mesh(geometry, standardMaterial)
+standardMesh.position.set(12, -6, 9)
+scene.add(standardMesh)
+
+// 9. TOON
+const toonMesh = new THREE.Mesh(geometry, toonMaterial)
+toonMesh.position.set(8, -6, 18)
+scene.add(toonMesh)
+
+//Material GUI Controls
+const materialFolder = gui.addFolder('Material')
+const blendingModes = { No: THREE.NoBlending, Normal: THREE.NormalBlending, Additive: THREE.AdditiveBlending, Subtractive: THREE.SubtractiveBlending, Multiply: THREE.MultiplyBlending }
+
+const addBaseMaterialProps = (folder, material) => {
+    folder.add(material, 'alphaTest').min(0).max(1).step(0.01).onChange(() => { material.needsUpdate = true })
+    folder.add(material, 'depthWrite').onChange(() => { material.needsUpdate = true })
+    folder.add(material, 'depthTest').onChange(() => { material.needsUpdate = true })
+    folder.add(material, 'alphaHash').onChange(() => { material.needsUpdate = true })
+    folder.add(material, 'blending', blendingModes).onChange(() => { material.needsUpdate = true })
+}
+
+// BASIC
+const basicFolder = materialFolder.addFolder('Basic Mesh')
+basicFolder.add(basicMesh.position, 'x', -100, 100, 0.1).name('Position X')
+basicFolder.add(basicMesh.position, 'y', -100, 100, 0.1).name('Position Y')
+basicFolder.add(basicMesh.position, 'z', -100, 100, 0.1).name('Position Z')
+basicFolder.addColor(basicMaterial, 'color')
+basicFolder.add(basicMaterial, 'wireframe')
+basicFolder.add(basicMaterial, 'transparent')
+basicFolder.add(basicMaterial, 'opacity').min(0).max(1).step(0.01)
+basicFolder.add(basicMaterial, 'visible')
+basicFolder.add(basicMaterial, 'side', { Front: THREE.FrontSide, Back: THREE.BackSide, Double: THREE.DoubleSide })
+addBaseMaterialProps(basicFolder, basicMaterial)
+
+// DEPTH
+const depthFolder = materialFolder.addFolder('Depth Mesh')
+depthFolder.add(depthMesh.position, 'x', -100, 100, 0.1).name('Position X')
+depthFolder.add(depthMesh.position, 'y', -100, 100, 0.1).name('Position Y')
+depthFolder.add(depthMesh.position, 'z', -100, 100, 0.1).name('Position Z')
+depthFolder.add(depthMaterial, 'wireframe')
+depthFolder.add(depthMaterial, 'transparent')
+depthFolder.add(depthMaterial, 'opacity').min(0).max(1).step(0.01)
+depthFolder.add(depthMaterial, 'visible')
+depthFolder.add(depthMaterial, 'side', { Front: THREE.FrontSide, Back: THREE.BackSide, Double: THREE.DoubleSide })
+addBaseMaterialProps(depthFolder, depthMaterial)
+
+// LAMBERT
+const lambertFolder = materialFolder.addFolder('Lambert Mesh')
+lambertFolder.add(lambertMesh.position, 'x', -100, 100, 0.1).name('Position X')
+lambertFolder.add(lambertMesh.position, 'y', -100, 100, 0.1).name('Position Y')
+lambertFolder.add(lambertMesh.position, 'z', -100, 100, 0.1).name('Position Z')
+lambertFolder.addColor(lambertMaterial, 'color')
+lambertFolder.addColor(lambertMaterial, 'emissive')
+lambertFolder.add(lambertMaterial, 'emissiveIntensity').min(0).max(10).step(0.01)
+lambertFolder.add(lambertMaterial, 'wireframe')
+lambertFolder.add(lambertMaterial, 'transparent')
+lambertFolder.add(lambertMaterial, 'opacity').min(0).max(1).step(0.01)
+lambertFolder.add(lambertMaterial, 'visible')
+lambertFolder.add(lambertMaterial, 'side', { Front: THREE.FrontSide, Back: THREE.BackSide, Double: THREE.DoubleSide })
+addBaseMaterialProps(lambertFolder, lambertMaterial)
+
+// MATCAP
+const matcapFolder = materialFolder.addFolder('Matcap Mesh')
+matcapFolder.add(matcapMesh.position, 'x', -100, 100, 0.1).name('Position X')
+matcapFolder.add(matcapMesh.position, 'y', -100, 100, 0.1).name('Position Y')
+matcapFolder.add(matcapMesh.position, 'z', -100, 100, 0.1).name('Position Z')
+matcapFolder.addColor(matcapMaterial, 'color')
+matcapFolder.add(matcapMaterial, 'transparent')
+matcapFolder.add(matcapMaterial, 'opacity').min(0).max(1).step(0.01)
+matcapFolder.add(matcapMaterial, 'visible')
+matcapFolder.add(matcapMaterial, 'side', { Front: THREE.FrontSide, Back: THREE.BackSide, Double: THREE.DoubleSide })
+matcapFolder.add(matcapMaterial, 'flatShading').onChange(() => { matcapMaterial.needsUpdate = true })
+addBaseMaterialProps(matcapFolder, matcapMaterial)
+
+// NORMAL
+const normalFolder = materialFolder.addFolder('Normal Mesh')
+normalFolder.add(normalMesh.position, 'x', -100, 100, 0.1).name('Position X')
+normalFolder.add(normalMesh.position, 'y', -100, 100, 0.1).name('Position Y')
+normalFolder.add(normalMesh.position, 'z', -100, 100, 0.1).name('Position Z')
+normalFolder.add(normalMaterial, 'wireframe')
+normalFolder.add(normalMaterial, 'transparent')
+normalFolder.add(normalMaterial, 'opacity').min(0).max(1).step(0.01)
+normalFolder.add(normalMaterial, 'visible')
+normalFolder.add(normalMaterial, 'side', { Front: THREE.FrontSide, Back: THREE.BackSide, Double: THREE.DoubleSide })
+normalFolder.add(normalMaterial, 'flatShading').onChange(() => { normalMaterial.needsUpdate = true })
+addBaseMaterialProps(normalFolder, normalMaterial)
+
+// PHONG
+const phongFolder = materialFolder.addFolder('Phong Mesh')
+phongFolder.add(phongMesh.position, 'x', -100, 100, 0.1).name('Position X')
+phongFolder.add(phongMesh.position, 'y', -100, 100, 0.1).name('Position Y')
+phongFolder.add(phongMesh.position, 'z', -100, 100, 0.1).name('Position Z')
+phongFolder.addColor(phongMaterial, 'color')
+phongFolder.addColor(phongMaterial, 'emissive')
+phongFolder.add(phongMaterial, 'emissiveIntensity').min(0).max(10).step(0.01)
+phongFolder.addColor(phongMaterial, 'specular')
+phongFolder.add(phongMaterial, 'shininess').min(0).max(1000).step(1)
+phongFolder.add(phongMaterial, 'wireframe')
+phongFolder.add(phongMaterial, 'transparent')
+phongFolder.add(phongMaterial, 'opacity').min(0).max(1).step(0.01)
+phongFolder.add(phongMaterial, 'visible')
+phongFolder.add(phongMaterial, 'side', { Front: THREE.FrontSide, Back: THREE.BackSide, Double: THREE.DoubleSide })
+phongFolder.add(phongMaterial, 'flatShading').onChange(() => { phongMaterial.needsUpdate = true })
+addBaseMaterialProps(phongFolder, phongMaterial)
+
+// PHYSICAL
+const physicalFolder = materialFolder.addFolder('Physical Mesh')
+physicalFolder.add(physicalMesh.position, 'x', -100, 100, 0.1).name('Position X')
+physicalFolder.add(physicalMesh.position, 'y', -100, 100, 0.1).name('Position Y')
+physicalFolder.add(physicalMesh.position, 'z', -100, 100, 0.1).name('Position Z')
+physicalFolder.addColor(physicalMaterial, 'color')
+physicalFolder.addColor(physicalMaterial, 'emissive')
+physicalFolder.add(physicalMaterial, 'emissiveIntensity').min(0).max(10).step(0.01)
+physicalFolder.add(physicalMaterial, 'roughness').min(0).max(1).step(0.01)
+physicalFolder.add(physicalMaterial, 'metalness').min(0).max(1).step(0.01)
+physicalFolder.add(physicalMaterial, 'clearcoat').min(0).max(1).step(0.01)
+physicalFolder.add(physicalMaterial, 'clearcoatRoughness').min(0).max(1).step(0.01)
+physicalFolder.add(physicalMaterial, 'ior').min(1).max(2.333).step(0.01)
+physicalFolder.add(physicalMaterial, 'reflectivity').min(0).max(1).step(0.01)
+physicalFolder.add(physicalMaterial, 'transmission').min(0).max(1).step(0.01)
+physicalFolder.add(physicalMaterial, 'wireframe')
+physicalFolder.add(physicalMaterial, 'transparent')
+physicalFolder.add(physicalMaterial, 'opacity').min(0).max(1).step(0.01)
+physicalFolder.add(physicalMaterial, 'visible')
+physicalFolder.add(physicalMaterial, 'sheen').min(0).max(1).step(0.01)
+physicalFolder.add(physicalMaterial, 'sheenRoughness').min(0).max(1).step(0.01)
+physicalFolder.addColor(physicalMaterial, 'sheenColor')
+physicalFolder.add(physicalMaterial, 'iridescence').min(0).max(1).step(0.01)
+physicalFolder.add(physicalMaterial, 'iridescenceIOR').min(1).max(2.333).step(0.01)
+physicalFolder.add(physicalMaterial, 'specularIntensity').min(0).max(1).step(0.01)
+physicalFolder.addColor(physicalMaterial, 'specularColor')
+physicalFolder.addColor(physicalMaterial, 'attenuationColor')
+physicalFolder.add(physicalMaterial, 'attenuationDistance').min(0).max(10).step(0.01)
+physicalFolder.add(physicalMaterial, 'envMapIntensity').min(0).max(10).step(0.01)
+physicalFolder.add(physicalMaterial, 'side', { Front: THREE.FrontSide, Back: THREE.BackSide, Double: THREE.DoubleSide })
+physicalFolder.add(physicalMaterial, 'flatShading').onChange(() => { physicalMaterial.needsUpdate = true })
+addBaseMaterialProps(physicalFolder, physicalMaterial)
+
+// STANDARD
+const standardFolder = materialFolder.addFolder('Standard Mesh')
+standardFolder.add(standardMesh.position, 'x', -100, 100, 0.1).name('Position X')
+standardFolder.add(standardMesh.position, 'y', -100, 100, 0.1).name('Position Y')
+standardFolder.add(standardMesh.position, 'z', -100, 100, 0.1).name('Position Z')
+standardFolder.addColor(standardMaterial, 'color')
+standardFolder.addColor(standardMaterial, 'emissive')
+standardFolder.add(standardMaterial, 'emissiveIntensity').min(0).max(10).step(0.01)
+standardFolder.add(standardMaterial, 'roughness').min(0).max(1).step(0.01)
+standardFolder.add(standardMaterial, 'metalness').min(0).max(1).step(0.01)
+standardFolder.add(standardMaterial, 'wireframe')
+standardFolder.add(standardMaterial, 'transparent')
+standardFolder.add(standardMaterial, 'opacity').min(0).max(1).step(0.01)
+standardFolder.add(standardMaterial, 'visible')
+standardFolder.add(standardMaterial, 'envMapIntensity').min(0).max(10).step(0.01)
+standardFolder.add(standardMaterial, 'side', { Front: THREE.FrontSide, Back: THREE.BackSide, Double: THREE.DoubleSide })
+standardFolder.add(standardMaterial, 'flatShading').onChange(() => { standardMaterial.needsUpdate = true })
+addBaseMaterialProps(standardFolder, standardMaterial)
+
+// TOON
+const toonFolder = materialFolder.addFolder('Toon Mesh')
+toonFolder.add(toonMesh.position, 'x', -100, 100, 0.1).name('Position X')
+toonFolder.add(toonMesh.position, 'y', -100, 100, 0.1).name('Position Y')
+toonFolder.add(toonMesh.position, 'z', -100, 100, 0.1).name('Position Z')
+toonFolder.addColor(toonMaterial, 'color')
+toonFolder.add(toonMaterial, 'wireframe')
+toonFolder.add(toonMaterial, 'transparent')
+toonFolder.add(toonMaterial, 'opacity').min(0).max(1).step(0.01)
+toonFolder.add(toonMaterial, 'visible')
+toonFolder.add(toonMaterial, 'side', { Front: THREE.FrontSide, Back: THREE.BackSide, Double: THREE.DoubleSide })
+addBaseMaterialProps(toonFolder, toonMaterial)
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+
+/////////////////////////////////Lights///////////////////////////////
+
+const ambientLight = new THREE.AmbientLight(0xffffff, 1)
+scene.add(ambientLight)
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 2)
+directionalLight.position.set(2, 2, 2)
+
+scene.add(directionalLight)
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+
+//////////////////////////////////Textures////////////////////////////
+
+const textureLoader = new THREE.TextureLoader()
+const matcapTexture = textureLoader.load('./static/textures/matcaps/1.png')
+matcapMaterial.matcap = matcapTexture
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+/////////////////////////////////Fonts////////////////////////////////
+const fonts = []
+const fontFolders = []
+const fontFolder = gui.addFolder('Fonts')
+
+const fontLoader = new FontLoader()
+
+function createText({
+    text,
+    fontPath,
+    size,
+    depth,
+    position,
+    rotation,
+    folderName
+})
+{
+    fontLoader.load(fontPath, (font) =>
+    {
+        const geometry = new TextGeometry(text, {
+            font: font,
+            size: size,
+            depth: depth,
+            curveSegments: 12,
+            bevelEnabled: true,
+            bevelThickness: 0.03,
+            bevelSize: 0.02,
+            bevelOffset: 0,
+            bevelSegments: 5
+        })
+
+        const material = new THREE.MeshMatcapMaterial({
+            map: matcapTexture
+        })
+
+        const mesh = new THREE.Mesh(geometry, material)
+
+        geometry.center()
+
+        mesh.position.set(position.x, position.y, position.z)
+
+        mesh.rotation.set(rotation.x, rotation.y, rotation.z)
+
+        scene.add(mesh)
+
+        fonts.push(mesh)
+
+        // GUI
+        const folder = fontFolder.addFolder(folderName)
+
+        folder.add(mesh.position, 'x', -100, 100, 0.1)
+        folder.add(mesh.position, 'y', -100, 100, 0.1)
+        folder.add(mesh.position, 'z', -100, 100, 0.1)
+    })
+}
+
+const degToRad = (deg) => deg * Math.PI / 180
+
+createText({
+    text: 'Mesh Materials in Three.js',
+    fontPath: './static/fonts/helvetiker_regular.typeface.json',
+    size: 6,
+    depth: 0.5,
+    position: { x: 18, y: 25, z: 12 },
+    rotation: { x: 0, y: -2.0, z: degToRad(0.8) },
+    folderName: 'Title Text'
+})
+
+createText({
+    text: 'Documentation',
+    fontPath: './static/fonts/helvetiker_regular.typeface.json',
+    size: 0.3,
+    depth: 0,
+    position: { x: -20, y: -3, z: -16 },
+    rotation: { x: 0, y: -2.0, z: degToRad(-2) },
+    folderName: 'Documentation Text'
+})
+
+const yTopOffset = 10;
+const yBottomOffset = -12;
+const labelSize = 1.5;
+const labelDepth = 0.2;
+const labelRot = { x: 0, y: -2.0, z: 0 };
+const fontUrl = './static/fonts/helvetiker_regular.typeface.json';
+
+// First row (Top)
+createText({ text: 'Basic', fontPath: fontUrl, size: labelSize, depth: labelDepth, position: { x: 0, y: yTopOffset, z: 32 }, rotation: labelRot, folderName: 'Basic Text' })
+createText({ text: 'Depth', fontPath: fontUrl, size: labelSize, depth: labelDepth, position: { x: 6, y: yTopOffset, z: 22 }, rotation: labelRot, folderName: 'Depth Text' })
+createText({ text: 'Lambert', fontPath: fontUrl, size: labelSize, depth: labelDepth, position: { x: 10, y: yTopOffset, z: 12 }, rotation: labelRot, folderName: 'Lambert Text' })
+createText({ text: 'Matcap', fontPath: fontUrl, size: labelSize, depth: labelDepth, position: { x: 16, y: yTopOffset, z: 4 }, rotation: labelRot, folderName: 'Matcap Text' })
+createText({ text: 'Normal', fontPath: fontUrl, size: labelSize, depth: labelDepth, position: { x: 21, y: yTopOffset, z: -5 }, rotation: labelRot, folderName: 'Normal Text' })
+createText({ text: 'Phong', fontPath: fontUrl, size: labelSize, depth: labelDepth, position: { x: 26, y: yTopOffset, z: -16 }, rotation: labelRot, folderName: 'Phong Text' })
+
+// Bottom row (Bottom)
+createText({ text: 'Physical', fontPath: fontUrl, size: labelSize, depth: labelDepth, position: { x: 16, y: yBottomOffset, z: 0 }, rotation: labelRot, folderName: 'Physical Text' })
+createText({ text: 'Standard', fontPath: fontUrl, size: labelSize, depth: labelDepth, position: { x: 12, y: yBottomOffset, z: 9 }, rotation: labelRot, folderName: 'Standard Text' })
+createText({ text: 'Toon', fontPath: fontUrl, size: labelSize, depth: labelDepth, position: { x: 8, y: yBottomOffset, z: 18 }, rotation: labelRot, folderName: 'Toon Text' })
+
+
+/////////////////////////////////////////////////////////////////////
+
+
+
+
+/////////////////////////////////Animations///////////////////////////
+const clock = new THREE.Clock()
+
+const tick = () =>{
+    
+    //Get Elaspsed Time
+    const elapsedTime = clock.getElapsedTime()
+
+    //Update Controls
+    controls.update()
+
+    //Rotate Objects
+    // scene.children.forEach((child) =>
+    // {
+    //     if(child instanceof THREE.Mesh && !child.userData.isFont)
+    //     {
+    //         child.rotation.y += 0.01
+    //         child.rotation.x += 0.005
+    //     }
+    // })
+    const rotatingMeshes = [
+    basicMesh,
+    depthMesh,
+    lambertMesh,
+    matcapMesh,
+    normalMesh,
+    phongMesh,
+    physicalMesh,
+    standardMesh,
+    toonMesh
+]
+rotatingMeshes.forEach((mesh) =>
+{
+    mesh.rotation.y += 0.01
+    mesh.rotation.x += 0.005
+})
+
+    //Rerender the scene
+    renderer.render(scene,camera)
+    // console.log(camera.position.x,camera.position.y,camera.position.z)
+
+    //Request Animation
+    window.requestAnimationFrame(tick)
+
+}
+tick()
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+
+/////////////////////////////Event Listners//////////////////////////
+window.addEventListener("resize", () =>{
+
     // Update sizes
     sizes.width = window.innerWidth
     sizes.height = window.innerHeight
 
-    // Update donut position for responsiveness
-    setDonutPosition()
-
-    // Update camera
-    camera.aspect = sizes.width / sizes.height
+    //Update Camera
+    camera.aspect = sizes.width/sizes.height
     camera.updateProjectionMatrix()
 
-    // Update renderer
-    renderer.setSize(sizes.width, sizes.height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-})
+    //Update Controls
+    controls.update()
 
-/**
- * Camera
- */
-// Base camera
-const camera = new THREE.PerspectiveCamera(35, sizes.width / sizes.height, 0.1, 100)
-camera.position.z = 6
-scene.add(camera)
+    //Update Renderer
+    renderer.setSize(sizes.width,sizes.height)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2))
 
-// Custom Drag Controls (Keeps donut strictly in place!)
-let isDragging = false
-let previousMousePosition = { x: 0, y: 0 }
+} )
 
-canvas.addEventListener('mousedown', (event) => {
-    isDragging = true
-    previousMousePosition = { x: event.clientX, y: event.clientY }
-})
-
-window.addEventListener('mouseup', () => {
-    isDragging = false
-})
-
-window.addEventListener('mousemove', (event) => {
-    if (isDragging) {
-        const deltaX = event.clientX - previousMousePosition.x
-        const deltaY = event.clientY - previousMousePosition.y
-
-        // Rotate the donut directly (spinning it in place)
-        donut.rotation.y += deltaX * 0.01
-        donut.rotation.x += deltaY * 0.01
-
-        previousMousePosition = { x: event.clientX, y: event.clientY }
-    }
-})
-
-/**
- * Renderer
- */
-const renderer = new THREE.WebGLRenderer({
-    canvas: canvas,
-    alpha: true, // Make background transparent so CSS background shows
-    antialias: true // Smoother edges for realism
-})
-renderer.setSize(sizes.width, sizes.height)
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-
-/**
- * Animate
- */
-let previousTime = performance.now()
-
-const tick = () => {
-    const currentTime = performance.now()
-    const deltaTime = currentTime - previousTime
-    previousTime = currentTime
-    const elapsedTime = currentTime / 1000 // Convert to seconds
-
-    // Animate Main Donut (Frame-rate independent)
-    if (!isDragging && !isAnimating) {
-        donut.rotation.y += 0.18 * (deltaTime / 1000)
-    }
-    const baseY = donut.userData.baseY !== undefined ? donut.userData.baseY : 0
-    donut.position.y = baseY + Math.sin(elapsedTime * 1.5) * 0.05 
-
-    // Auto-clear must be false for scissor rendering multiple viewports
-    renderer.autoClear = false
-    renderer.clear()
-
-    // 1. Render Main Scene (Layer 0)
-    camera.layers.set(0)
-    renderer.setScissorTest(false)
-    renderer.setViewport(0, 0, sizes.width, sizes.height)
-    camera.aspect = sizes.width / sizes.height
-    camera.updateProjectionMatrix()
-    renderer.render(scene, camera)
-
-    // 2. Render UI Donuts (Layers 1, 2, 3)
-    renderer.setScissorTest(true)
-    flavors.forEach((el, index) => {
-        const rect = el.getBoundingClientRect()
-        // Account for scroll offset since canvas is position: absolute
-        const canvasLeft = rect.left + window.scrollX
-        const canvasBottom = sizes.height - (rect.bottom + window.scrollY)
-
-        // Only render if visible on screen
-        if(rect.width > 0 && rect.height > 0) {
-            renderer.setViewport(canvasLeft, canvasBottom, rect.width, rect.height)
-            renderer.setScissor(canvasLeft, canvasBottom, rect.width, rect.height)
-            
-            // Temporarily set camera aspect to match the HTML box
-            camera.aspect = rect.width / rect.height
-            camera.updateProjectionMatrix()
-            
-            camera.layers.set(index + 1)
-            // UI donuts remain static and fixed facing forward to match the reference design
-            
-            renderer.render(scene, camera)
-        }
-    })
-
-    // Call tick again on the next frame
-    window.requestAnimationFrame(tick)
-}
-
-tick()
-
-/**
- * Prevent Browser Zooming
- */
-window.addEventListener('wheel', (e) => {
-    // Disable Ctrl+Scroll or Trackpad pinch zoom
-    if (e.ctrlKey || e.metaKey) {
-        e.preventDefault()
-    }
-}, { passive: false })
-
-window.addEventListener('touchmove', (e) => {
-    // Disable multi-touch pinch zoom on mobile
-    if (e.touches.length > 1) {
-        e.preventDefault()
-    }
-}, { passive: false })
+//////////////////////////////////////////////////////////////////////
