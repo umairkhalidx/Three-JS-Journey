@@ -10,6 +10,7 @@ html {
     scrollbar-width: none;
     touch-action: pan-x pan-y; /* Disables pinch-zoom on mobile */
     font-size: calc(100vw / 90);
+    scroll-behavior: smooth;
 }
 
 body {
@@ -195,15 +196,22 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 }
 
 .social-links a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
     color: var(--bg-glow);
     text-decoration: none;
-    font-size: 1.1rem;
-    font-weight: 700;
     opacity: 0.8;
     transition: all 0.3s ease;
     border: 0.1rem solid rgba(253, 248, 244, 0.3);
-    padding: 0.6rem 1.2rem;
-    border-radius: 2rem;
+    border-radius: 50%;
+}
+
+.social-links a svg {
+    width: 1.5rem;
+    height: 1.5rem;
 }
 
 .social-links a:hover {
