@@ -1,19 +1,62 @@
-*
-{
+* {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
 }
 
-html,
-body
-{
-    overflow: hidden;
+html, body {
+    overflow-x: hidden;
+    font-family: 'Inter', sans-serif;
+    color: #ffffff;
+    background-color: #1e1e1e; /* Dark theme default */
 }
 
-.webgl
-{
+/* Three.js Canvas */
+.webgl {
     position: fixed;
     top: 0;
     left: 0;
     outline: none;
+    z-index: -1; /* Place canvas behind sections */
+}
+
+/* Sections */
+.section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    width: 100vw;
+    padding: 2rem;
+    position: relative; /* Ensure sections sit on top of the fixed canvas */
+    pointer-events: none; /* Let clicks pass through empty space to the canvas if needed */
+}
+
+/* Content inside sections (when added) should catch pointer events */
+.section > * {
+    pointer-events: auto;
+}
+
+/* Section Colors */
+.hero {
+    background-color: rgba(255, 99, 71, 0.2); /* Tomato */
+}
+
+.section-2 {
+    background-color: rgba(60, 179, 113, 0.2); /* Medium Sea Green */
+}
+
+.section-3 {
+    background-color: rgba(138, 43, 226, 0.2); /* Blue Violet */
+}
+
+.footer {
+    background-color: rgba(255, 165, 0, 0.2); /* Orange */
+}
+
+/* Responsive adjustments can be made here */
+@media (max-width: 768px) {
+    .section {
+        padding: 1rem;
+    }
 }

@@ -1,0 +1,28 @@
+{
+  "name": "three-js-journey",
+  "version": "1.0.0",
+  "description": "This repo is to record and showcase my Three.js journey",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/umairkhalidx/Three-JS-Journey.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/umairkhalidx/Three-JS-Journey/issues"
+  },
+  "homepage": "https://github.com/umairkhalidx/Three-JS-Journey#readme",
+  "dependencies": {
+    "gsap": "3.12",
+    "lil-gui": "^0.21.0",
+    "three": "^0.184.0",
+    "vite": "^8.0.14"
+  }
+}
