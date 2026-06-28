@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import GUI from 'lil-gui'
+
 gsap.registerPlugin(ScrollTrigger)
 
 // Reset scroll position on reload so it always starts at the top
@@ -545,6 +547,10 @@ tl1.to(donut.userData, {
     ease: "power2.inOut"
 }, 0)
 
+// Transition background patterns smoothly
+tl1.to(".bg-stripes", { opacity: 0, ease: "none" }, 0)
+tl1.to(".bg-dots", { opacity: 1, ease: "none" }, 0)
+
 
 
 // Timeline 2: The Explosion (Pinned in Section 2)
@@ -595,6 +601,9 @@ tl2.to(".anatomy-dough", {
     ease: "power1.out",
     duration: 0.5
 }, 2.0)
+
+// 6. Add empty buffer at the end so the user has to scroll a bit more before the pin releases
+tl2.to({}, { duration: 1.0 })
 
 // Timeline 3: Scroll out of view for Section 3
 const tl3 = gsap.timeline({

@@ -18,12 +18,36 @@ body {
     --bg-main: #dcbfa6;
     --bg-glow: #fdf8f4;
     --accent-color: #4A2511;
-    background: radial-gradient(circle at 75% 50%, var(--bg-glow) 0%, var(--bg-main) 60%);
     background-color: var(--bg-main);
+    background-image: radial-gradient(circle at 75% 50%, var(--bg-glow) 0%, transparent 60%);
+    background-size: 100% 100%;
+    background-position: center center;
     font-family: 'Poppins', sans-serif;
     margin: 0;
     padding: 0;
     color: #1f2937;
+}
+
+/* Background Pattern Layers */
+.bg-pattern {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.bg-stripes {
+    background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.08) 0, rgba(255, 255, 255, 0.08) 15px, transparent 15px, transparent 30px);
+    opacity: 1;
+}
+
+.bg-dots {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.25) 1.5px, transparent 1.5px);
+    background-size: 30px 30px;
+    opacity: 0; /* Hidden initially, faded in via GSAP */
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
