@@ -155,16 +155,6 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 
 
 /* Responsive Layout */
-@media (max-width: 1024px) {
-    .hero-content h1 {
-        font-size: 4.5rem;
-    }
-    .flavor {
-        width: 90px;
-        height: 90px;
-    }
-}
-
 @media (max-width: 768px) {
     .navbar {
         padding: 1.5rem 5%;
@@ -176,25 +166,14 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 
     .hero {
         align-items: flex-start; /* Move text up on mobile */
-        justify-content: center; /* Center horizontally */
+        padding-top: 25%;
         padding-left: 5%;
-        padding-right: 5%;
-        padding-top: 15vh;
-        text-align: center;
     }
     .hero-content h1 {
         font-size: 3.5rem; /* Smaller text on mobile */
     }
     .hero-content p {
         font-size: 1.1rem;
-    }
-    .flavor-selectors {
-        justify-content: center;
-        margin-top: 1rem;
-    }
-    .flavor {
-        width: 70px;
-        height: 70px;
     }
 }
 

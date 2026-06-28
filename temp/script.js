@@ -93,7 +93,8 @@ const createDonut = (targetLayer) => {
     const dough = new THREE.Mesh(doughGeometry, doughMaterial)
     donutGroup.add(dough)
 
-    const donutMaterial = new THREE.MeshPhysicalMaterial({ color: '#D2A679', roughness: 0.1, metalness: 0.02, clearcoat: 1.0, clearcoatRoughness: 0.1 })
+    // Softer frosting (less reflective than before, but not completely flat)
+    const donutMaterial = new THREE.MeshStandardMaterial({ color: '#D2A679', roughness: 0.65, metalness: 0.0 })
     const icing = new THREE.Mesh(icingGeometry, donutMaterial)
     donutGroup.add(icing)
 
