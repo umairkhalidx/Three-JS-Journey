@@ -620,6 +620,22 @@ tl3.to(donut.userData, {
     ease: "none"
 }, 0)
 
+// Timeline 4: Horizontal Scroll in Section 3
+const tl4 = gsap.timeline({
+    scrollTrigger: {
+        trigger: ".section-3",
+        start: "top top", // Starts when section-3 fills the viewport
+        end: "+=300%",    // Pin for 300% of viewport height (since there are 3 panels)
+        scrub: true,
+        pin: true
+    }
+})
+
+tl4.to(".horizontal-scroll-container", {
+    xPercent: -66.6666, // Move left by 66.66% of the container's width (300vw), which translates it exactly 200vw
+    ease: "none"
+})
+
 /**
  * Renderer
  */
