@@ -9,7 +9,12 @@ gsap.registerPlugin(ScrollTrigger)
 if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual'
 }
-window.scrollTo(0, 0)
+window.addEventListener('beforeunload', () => {
+    window.scrollTo(0, 0)
+})
+window.addEventListener('load', () => {
+    window.scrollTo(0, 0)
+})
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
@@ -29,18 +34,18 @@ window.addEventListener('load', () => {
             lottiePlayer.pause()
         }
         loadingScreen.classList.add('fade-out')
-        
+
         // Grand Entrance Animation (starts right as loading screen fades)
         gsap.to(donut.scale, {
-            x: donut.userData.targetScale, 
-            y: donut.userData.targetScale, 
+            x: donut.userData.targetScale,
+            y: donut.userData.targetScale,
             z: donut.userData.targetScale,
             duration: 3.5,
             ease: "elastic.out(1, 0.5)",
             delay: 1.2,
             onComplete: () => { donutState.hasEntered = true }
         })
-        
+
         // Dramatic entrance spin
         donutSpinWrapper.rotation.y = -Math.PI
         gsap.to(donutSpinWrapper.rotation, {
@@ -49,7 +54,7 @@ window.addEventListener('load', () => {
             ease: "power2.out",
             delay: 1.2
         })
-        
+
     }, 2500) // 2.5 seconds delay before fading out
 })
 
@@ -60,10 +65,10 @@ const scene = new THREE.Scene()
  * Objects - Realistic Procedural Donut Factory
  */
 // Reusable geometries/materials to save memory
-const doughGeometry = new THREE.TorusGeometry(1, 0.55, 32, 64)
+const doughGeometry = new THREE.TorusGeometry(1, 0.45, 32, 64)
 const doughMaterial = new THREE.MeshStandardMaterial({ color: '#e0a96d', roughness: 0.7, metalness: 0.05 })
 
-const icingGeometry = new THREE.TorusGeometry(1, 0.57, 32, 64)
+const icingGeometry = new THREE.TorusGeometry(1, 0.47, 128, 256)
 const posAttribute = icingGeometry.attributes.position
 const vertex = new THREE.Vector3()
 
@@ -90,15 +95,15 @@ const drizzleMaterial = new THREE.MeshPhysicalMaterial({ color: '#3d1c04', rough
  */
 const createDrizzleRing = (baseTubeAngle, waveFreq, waveAmp, thickness) => {
     const points = []
-    for (let i = 0; i <= 60; i++) {
+    for (let i = 0; i < 60; i++) {
         // Calculate angle around the main circle of the donut
         const angle = (i / 60) * Math.PI * 2
 
         // Add a sine wave displacement for an organic zig-zag pattern
         const tubeAngle = baseTubeAngle + Math.sin(angle * waveFreq) * waveAmp
 
-        // Map the 2D path onto the 3D surface of the torus (R=1, r=0.58)
-        points.push(new THREE.Vector3((1 + 0.58 * Math.cos(tubeAngle)) * Math.cos(angle), (1 + 0.58 * Math.cos(tubeAngle)) * Math.sin(angle), 0.58 * Math.sin(tubeAngle)))
+        // Map the 2D path onto the thinner 3D surface of the torus (R=1, r=0.48)
+        points.push(new THREE.Vector3((1 + 0.48 * Math.cos(tubeAngle)) * Math.cos(angle), (1 + 0.48 * Math.cos(tubeAngle)) * Math.sin(angle), 0.48 * Math.sin(tubeAngle)))
     }
     return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points, true), 150, thickness, 8, true)
 }
@@ -127,7 +132,7 @@ const generateSprinkles = (count, radius, length) => {
         // Randomize position across the top half of the torus
         const angle = Math.random() * Math.PI * 2
         const tubeAngle = Math.random() * Math.PI
-        const R = 1, r = 0.57 // Main radius and tube radius
+        const R = 1, r = 0.47 // Main radius and thinner tube radius
 
         // Map spherical coordinates to torus surface
         mesh.position.set((R + r * Math.cos(tubeAngle)) * Math.cos(angle), (R + r * Math.cos(tubeAngle)) * Math.sin(angle), r * Math.sin(tubeAngle))
@@ -156,7 +161,7 @@ const createDonut = (targetLayer) => {
     const donutMaterial = new THREE.MeshPhysicalMaterial({ color: '#D2A679', roughness: 0.1, metalness: 0.02, clearcoat: 1.0, clearcoatRoughness: 0.1 })
     const icingMesh = new THREE.Mesh(icingGeometry, donutMaterial)
 
-    const chocolateToppings = generateSprinkles(150, 0.025, 0.08)
+    const chocolateToppings = generateSprinkles(150, 0.035, 0.11)
     const lemonToppings = generateSprinkles(50, 0.05, 0.15)
     lemonToppings.visible = false
 
@@ -240,7 +245,7 @@ const setDonutPosition = () => {
 
     const scale = 0.8 * scaleFactor
     donut.userData.targetScale = scale
-    
+
     // Only snap the scale instantly if the entrance animation has finished
     if (donutState.hasEntered) {
         donut.scale.set(scale, scale, scale)
@@ -317,6 +322,22 @@ flavors.forEach((flavor, index) => {
             ease: "power2.inOut"
         })
 
+        // Animate 3D Box Colors
+        gsap.to(boxMaterial.color, {
+            r: new THREE.Color(bgColors[index].main).r,
+            g: new THREE.Color(bgColors[index].main).g,
+            b: new THREE.Color(bgColors[index].main).b,
+            duration: 1.0,
+            ease: "power2.inOut"
+        })
+        gsap.to(ribbonMaterial.color, {
+            r: new THREE.Color(bgColors[index].accent).r,
+            g: new THREE.Color(bgColors[index].accent).g,
+            b: new THREE.Color(bgColors[index].accent).b,
+            duration: 1.0,
+            ease: "power2.inOut"
+        })
+
         // Fade out and change title text
         gsap.to(heroTitle, {
             opacity: 0,
@@ -348,6 +369,12 @@ flavors.forEach((flavor, index) => {
                 strawberryToppings.visible = index === 1
                 lemonToppings.visible = index === 2
 
+                // Update the tiny donut inside the box!
+                boxDonutData.donutMaterial.color.copy(newColor)
+                boxDonutData.chocolateToppings.visible = index === 0
+                boxDonutData.strawberryToppings.visible = index === 1
+                boxDonutData.lemonToppings.visible = index === 2
+
                 // Teleport offscreen to the opposite side
                 donut.position.x = teleportX
 
@@ -373,6 +400,126 @@ flavors.forEach((flavor, index) => {
         })
     })
 })
+
+/**
+ * 3D Donut Box
+ */
+const donutBox = new THREE.Group()
+
+// Create a cute polka dot pattern canvas
+const patternCanvas = document.createElement('canvas')
+patternCanvas.width = 256
+patternCanvas.height = 256
+const ctx = patternCanvas.getContext('2d')
+
+// Background (white, will be tinted by the material color)
+ctx.fillStyle = '#ffffff'
+ctx.fillRect(0, 0, 256, 256)
+
+// Polka dots (slightly darker so they show up beautifully tinted)
+ctx.fillStyle = '#e0e0e0'
+const dotRadius = 24
+const spacing = 85
+for (let y = 0; y <= 256 + spacing; y += spacing) {
+    for (let x = 0; x <= 256 + spacing; x += spacing) {
+        // Offset alternating rows for a nice staggered polka dot pattern
+        const offsetX = (Math.round(y / spacing) % 2 === 0) ? 0 : spacing / 2
+        ctx.beginPath()
+        ctx.arc(x + offsetX, y, dotRadius, 0, Math.PI * 2)
+        ctx.fill()
+    }
+}
+
+const patternTexture = new THREE.CanvasTexture(patternCanvas)
+patternTexture.wrapS = THREE.RepeatWrapping
+patternTexture.wrapT = THREE.RepeatWrapping
+patternTexture.repeat.set(2, 2) // Repeat the pattern on the box
+
+const boxMaterial = new THREE.MeshStandardMaterial({
+    color: '#dcbfa6', // Default Brown
+    map: patternTexture, // Add the cute pattern!
+    roughness: 0.8, // Matte cardboard
+    metalness: 0.1
+})
+const ribbonMaterial = new THREE.MeshStandardMaterial({
+    color: '#4A2511', // Default Accent
+    roughness: 0.4, // Slightly shiny ribbon
+    metalness: 0.2
+})
+const glassMaterial = new THREE.MeshPhysicalMaterial({
+    roughness: 0.1,
+    transmission: 0.9,
+    thickness: 0.5,
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.6
+})
+const goldMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffd700,
+    metalness: 1.0,
+    roughness: 0.2
+})
+
+// Base of the box
+const boxBaseGeom = new THREE.BoxGeometry(2.5, 1, 2.5)
+const boxBase = new THREE.Mesh(boxBaseGeom, boxMaterial)
+
+// Inner dark box to simulate being hollow
+const boxInnerGeom = new THREE.BoxGeometry(2.35, 1.01, 2.35)
+const boxInnerMat = new THREE.MeshStandardMaterial({ color: 0x2a160a, roughness: 0.9 })
+const boxInner = new THREE.Mesh(boxInnerGeom, boxInnerMat)
+
+// The Donut Inside!
+const boxDonutData = createDonut(0)
+const boxDonut = boxDonutData.donut
+// Flatten the donut so it lays flat in the box
+boxDonut.rotation.set(Math.PI / 2, 0, 0)
+boxDonut.position.y = 0.25 // Raised so it isn't swallowed by the dark false bottom now that it's thinner!
+boxDonut.scale.set(0.65, 0.65, 0.65)
+
+// Lid Frame
+const lidFrame1Geom = new THREE.BoxGeometry(2.6, 0.1, 0.4)
+const lidF1 = new THREE.Mesh(lidFrame1Geom, boxMaterial)
+lidF1.position.set(0, 0.55, -1.1)
+
+const lidF2 = new THREE.Mesh(lidFrame1Geom, boxMaterial)
+lidF2.position.set(0, 0.55, 1.1)
+
+const lidFrame2Geom = new THREE.BoxGeometry(0.4, 0.1, 1.8)
+const lidF3 = new THREE.Mesh(lidFrame2Geom, boxMaterial)
+lidF3.position.set(-1.1, 0.55, 0)
+
+const lidF4 = new THREE.Mesh(lidFrame2Geom, boxMaterial)
+lidF4.position.set(1.1, 0.55, 0)
+
+// Glass Window
+const windowGeom = new THREE.BoxGeometry(1.8, 0.05, 1.8)
+const boxWindow = new THREE.Mesh(windowGeom, glassMaterial)
+boxWindow.position.set(0, 0.55, 0)
+
+// Ribbons over the window
+const ribbon1Geom = new THREE.BoxGeometry(2.65, 0.12, 0.4)
+const ribbon1 = new THREE.Mesh(ribbon1Geom, ribbonMaterial)
+ribbon1.position.y = 0.55
+
+const ribbon2Geom = new THREE.BoxGeometry(0.4, 0.12, 2.65)
+const ribbon2 = new THREE.Mesh(ribbon2Geom, ribbonMaterial)
+ribbon2.position.y = 0.55
+
+donutBox.add(boxBase, boxInner, boxDonut, lidF1, lidF2, lidF3, lidF4, boxWindow, ribbon1, ribbon2)
+donutBox.scale.set(0.65, 0.65, 0.65) // Decrease the size of the box
+
+donutBox.children.forEach(child => child.layers.enable(0)) // Enable lights
+
+// User data for GSAP animation
+donutBox.userData = {
+    baseX: 10, // Start way off-screen to the right
+    baseY: -4,
+    rotX: 0.4, // Tilted forward slightly to see the lid
+    rotY: -0.6 // Angled
+}
+
+scene.add(donutBox)
 
 /**
  * Lights - Studio Setup
@@ -417,7 +564,7 @@ window.addEventListener('resize', () => {
 
     // Update renderer
     renderer.setSize(sizes.width, sizes.height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)) // Reduced from 2 for better performance
 })
 
 /**
@@ -442,18 +589,25 @@ window.addEventListener('mouseup', () => {
 })
 
 window.addEventListener('mousemove', (event) => {
-    // Only allow manual rotation dragging when in the Hero section (isSpinning = true)
-    if (isDragging && donutState.isSpinning) {
+    if (isDragging) {
         const deltaX = event.clientX - previousMousePosition.x
         const deltaY = event.clientY - previousMousePosition.y
 
-        // Rotate the wrappers independently to avoid Gimbal lock/axis mixing
-        donutSpinWrapper.rotation.y += deltaX * 0.01
-        donutTiltWrapper.rotation.x += deltaY * 0.01
+        if (donutState.isSpinning) {
+            // Rotate the hero donut wrappers
+            donutSpinWrapper.rotation.y += deltaX * 0.01
+            donutTiltWrapper.rotation.x += deltaY * 0.01
 
-        // Clamp the vertical tilt to safely keep the donut upright and avoid Gimbal lock poles
-        // Allowing a wide range: -120 degrees to +49 degrees (accounting for the 36deg default tilt)
-        donutTiltWrapper.rotation.x = Math.max(-2.1, Math.min(0.85, donutTiltWrapper.rotation.x))
+            // Clamp the vertical tilt
+            donutTiltWrapper.rotation.x = Math.max(-2.1, Math.min(0.85, donutTiltWrapper.rotation.x))
+        } else {
+            // Drag the 3D Box in Section 4!
+            donutBox.userData.rotY += deltaX * 0.01
+            donutBox.userData.rotX += deltaY * 0.01
+
+            // Optionally clamp the box tilt so it doesn't flip completely upside down
+            donutBox.userData.rotX = Math.max(-1.0, Math.min(1.5, donutBox.userData.rotX))
+        }
 
         previousMousePosition = { x: event.clientX, y: event.clientY }
     }
@@ -558,7 +712,7 @@ const tl2 = gsap.timeline({
     scrollTrigger: {
         trigger: ".section-2",
         start: "top top",
-        end: "+=600%", // Pins for 600% of viewport height (very slow, dramatic scroll)
+        end: "+=400%", // Pins for 400% of viewport height (matches animation steps)
         scrub: true,
         pin: true
     }
@@ -602,9 +756,6 @@ tl2.to(".anatomy-dough", {
     duration: 0.5
 }, 2.0)
 
-// 6. Add empty buffer at the end so the user has to scroll a bit more before the pin releases
-tl2.to({}, { duration: 1.0 })
-
 // Timeline 3: Scroll out of view for Section 3
 const tl3 = gsap.timeline({
     scrollTrigger: {
@@ -636,6 +787,50 @@ tl4.to(".horizontal-scroll-container", {
     ease: "none"
 })
 
+// Timeline 5: Section 4 - Slide the 3D Box in horizontally once
+const tl5 = gsap.timeline({
+    scrollTrigger: {
+        trigger: ".section-4",
+        start: "top 15%", // Starts when section 4 is 85% into the viewport
+        once: true, // Only trigger this once, preventing the scroll lock from running again
+        toggleActions: "play none none none", // Play once, never reverse
+        onEnter: () => {
+            // Disable scroll temporarily so the user doesn't miss the box appearance
+            // Using event listeners instead of overflow: hidden to prevent layout shifting and lag!
+            const blockScroll = (e) => e.preventDefault()
+            window.addEventListener('wheel', blockScroll, { passive: false })
+            window.addEventListener('touchmove', blockScroll, { passive: false })
+
+            setTimeout(() => {
+                window.removeEventListener('wheel', blockScroll)
+                window.removeEventListener('touchmove', blockScroll)
+            }, 2500) // Increased to match the slower animation
+        }
+    }
+})
+
+tl5.to(donutBox.userData, {
+    baseX: 1.8, // Slide to the right side of the screen
+    rotY: Math.PI * 2 - 0.4, // Elegant spin as it slides in
+    duration: 2.5, // Slowed down from 1.5s to 2.5s
+    ease: "power3.out"
+}, 0)
+
+// Timeline 6: Section 4 - Scrub vertical position so it scrolls with the page
+const tl6 = gsap.timeline({
+    scrollTrigger: {
+        trigger: ".section-4",
+        start: "top bottom", // Top of section hits bottom of screen
+        end: "bottom top",   // Bottom of section hits top of screen
+        scrub: true
+    }
+})
+
+tl6.to(donutBox.userData, {
+    baseY: 4, // Slide the box UP in perfect sync with the DOM scrolling
+    ease: "none"
+}, 0)
+
 /**
  * Renderer
  */
@@ -645,7 +840,7 @@ const renderer = new THREE.WebGLRenderer({
     antialias: true // Smoother edges for realism
 })
 renderer.setSize(sizes.width, sizes.height)
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)) // Reduced from 2 for better performance
 
 /**
  * Animate
@@ -665,6 +860,12 @@ const tick = () => {
     }
     const baseY = donut.userData.baseY !== undefined ? donut.userData.baseY : 0
     donut.position.y = baseY + Math.sin(elapsedTime * 1.5) * 0.05
+
+    // Animate 3D Box
+    donutBox.position.x = donutBox.userData.baseX
+    donutBox.position.y = donutBox.userData.baseY + Math.sin(elapsedTime * 1.2) * 0.05
+    donutBox.rotation.x = donutBox.userData.rotX
+    donutBox.rotation.y = donutBox.userData.rotY
 
     // Auto-clear must be false for scissor rendering multiple viewports
     renderer.autoClear = false

@@ -5,6 +5,7 @@
 }
 
 html {
+    scroll-behavior: smooth;
     /* Hide scrollbar for IE, Edge and Firefox */
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -198,6 +199,7 @@ body::-webkit-scrollbar {
     height: 100vh;
     position: relative;
     z-index: 5;
+    margin-bottom: 20vh;
     pointer-events: none;
     /* Allows scrolling but passes clicks if necessary */
 }
@@ -239,18 +241,18 @@ body::-webkit-scrollbar {
 
 .anatomy-sprinkles {
     top: 10%;
-    right: 2%;
+    right: -5%;
     text-align: right;
 }
 
 .anatomy-icing {
     top: 35%;
-    left: 2%;
+    left: -5%;
 }
 
 .anatomy-dough {
     top: 65%;
-    right: 2%;
+    right: -5%;
     text-align: right;
 }
 
@@ -336,6 +338,79 @@ body::-webkit-scrollbar {
     object-fit: cover;
     border-radius: 20px;
     box-shadow: 0 20px 40px rgba(74, 37, 17, 0.15);
+    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.5s ease;
+}
+
+.panel-photo:hover {
+    transform: scale(1.05) translateY(-10px);
+    box-shadow: 0 35px 60px rgba(74, 37, 17, 0.3);
+}
+
+/* Section 4: Order Now */
+.section-4 {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 0 10%;
+    text-align: left;
+    pointer-events: none;
+    /* Let clicks pass through to the 3D canvas underneath */
+}
+
+.order-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10vw;
+    width: 100%;
+    max-width: 1200px;
+    z-index: 2;
+    align-items: center;
+    pointer-events: none;
+    /* Override .section > * to let clicks pass through the empty right grid */
+}
+
+.order-text {
+    width: 100%;
+    pointer-events: auto;
+    /* Restore interactivity for the button and text */
+}
+
+.order-text h2 {
+    font-family: 'Dancing Script', cursive;
+    font-size: 5.5rem;
+    color: var(--accent-color);
+    margin-bottom: 1.5rem;
+    line-height: 1.1;
+    font-weight: 700;
+}
+
+.order-text p {
+    font-size: 1.4rem;
+    color: var(--accent-color);
+    margin-bottom: 3.5rem;
+    line-height: 1.6;
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.order-btn {
+    display: inline-block;
+    padding: 1.2rem 3rem;
+    background-color: var(--accent-color);
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-decoration: none;
+    border-radius: 50px;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease, background-color 0.3s ease;
+    box-shadow: 0 10px 20px rgba(74, 37, 17, 0.2);
+}
+
+.order-btn:hover {
+    transform: scale(1.05) translateY(-5px);
+    box-shadow: 0 15px 30px rgba(74, 37, 17, 0.4);
+    background-color: #381b0c;
 }
 
 /* Footer */
@@ -412,38 +487,40 @@ body::-webkit-scrollbar {
 
 .footer-links {
     display: flex;
-    gap: 6rem;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
 }
 
-.footer-col h3 {
-    font-size: 1.1rem;
-    margin-bottom: 1.5rem;
-    opacity: 0.6;
-    text-transform: uppercase;
-    letter-spacing: 0.1rem;
-}
-
-.footer-col ul {
-    list-style: none;
-    padding: 0;
-}
-
-.footer-col li {
-    margin-bottom: 1rem;
-}
-
-.footer-col a {
+.map-text {
+    font-family: 'Dancing Script', cursive;
+    font-size: 2.2rem;
     color: var(--bg-glow);
-    text-decoration: none;
-    font-size: 1.2rem;
-    font-weight: 500;
-    transition: opacity 0.3s ease;
+    text-align: center;
     opacity: 0.9;
+    margin-top: 0.5rem;
 }
 
-.footer-col a:hover {
-    opacity: 1;
-    text-decoration: underline;
+.footer-map {
+    width: 25rem;
+    height: 12.5rem;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(74, 37, 17, 0.15);
+}
+
+.footer-map iframe {
+    width: 100%;
+    height: calc(100% + 50px); /* Taller than container to push the footer links out of view */
+    margin-bottom: -50px;
+    border: none;
+    /* Apply filters to make the map match our pastel bakery theme perfectly! */
+    filter: sepia(0.6) hue-rotate(330deg) saturate(1.5) opacity(0.85);
+    transition: filter 0.3s ease;
+}
+
+.footer-map iframe:hover {
+    filter: sepia(0.3) hue-rotate(330deg) saturate(1.5) opacity(1);
 }
 
 .footer-bottom {
