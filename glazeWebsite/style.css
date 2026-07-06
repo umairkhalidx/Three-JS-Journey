@@ -622,3 +622,78 @@ body::-webkit-scrollbar {
         transform: translateX(-50%) translateY(-5px);
     }
 }
+
+/* -------------------------------------
+   MOBILE BLOCKER (Desktop Only Enforcement)
+------------------------------------- */
+.mobile-blocker {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg-main);
+    z-index: 10000;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    box-sizing: border-box;
+}
+
+.mobile-blocker-content {
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 3rem 2rem;
+    width: 95%;
+    max-width: 600px;
+    margin-top: -25vh;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(74, 37, 17, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.mobile-blocker-content h2 {
+    font-family: 'Dancing Script', cursive;
+    font-size: 6rem;
+    color: var(--accent-color);
+    margin: 0;
+    line-height: 1.1;
+}
+
+.mobile-blocker-content p {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.5rem;
+    color: var(--accent-color);
+    line-height: 1.6;
+    margin: 0;
+    font-weight: 500;
+}
+
+@media (max-width: 1024px) {
+    .mobile-blocker {
+        display: flex;
+    }
+    
+    /* Completely disable and hide the rest of the website */
+    body {
+        overflow: hidden !important;
+    }
+    
+    .loading-screen,
+    .bg-pattern,
+    .webgl,
+    .navbar,
+    .hero,
+    .section-2,
+    .section-3,
+    .section-4,
+    .footer {
+        display: none !important;
+    }
+}

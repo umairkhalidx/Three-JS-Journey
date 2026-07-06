@@ -5,10 +5,11 @@ import GUI from 'lil-gui'
 
 gsap.registerPlugin(ScrollTrigger)
 
-// Reset scroll position on reload so it always starts at the top
+// Force scroll to top on reload so animations trigger properly!
 if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual'
 }
+window.scrollTo(0, 0) // Force immediate scroll on load
 window.addEventListener('beforeunload', () => {
     window.scrollTo(0, 0)
 })
@@ -507,7 +508,14 @@ const ribbon2 = new THREE.Mesh(ribbon2Geom, ribbonMaterial)
 ribbon2.position.y = 0.55
 
 donutBox.add(boxBase, boxInner, boxDonut, lidF1, lidF2, lidF3, lidF4, boxWindow, ribbon1, ribbon2)
-donutBox.scale.set(0.65, 0.65, 0.65) // Decrease the size of the box
+
+// Responsive scale calculation for the donut box
+const setDonutBoxPosition = () => {
+    const scaleFactor = window.innerWidth / 1440
+    const scale = 0.65 * scaleFactor
+    donutBox.scale.set(scale, scale, scale)
+}
+setDonutBoxPosition()
 
 donutBox.children.forEach(child => child.layers.enable(0)) // Enable lights
 
@@ -557,6 +565,7 @@ window.addEventListener('resize', () => {
 
     // Update donut position for responsiveness
     setDonutPosition()
+    if (typeof setDonutBoxPosition !== 'undefined') setDonutBoxPosition()
 
     // Update camera
     camera.aspect = sizes.width / sizes.height
@@ -862,8 +871,9 @@ const tick = () => {
     donut.position.y = baseY + Math.sin(elapsedTime * 1.5) * 0.05
 
     // Animate 3D Box
-    donutBox.position.x = donutBox.userData.baseX
-    donutBox.position.y = donutBox.userData.baseY + Math.sin(elapsedTime * 1.2) * 0.05
+    const scaleFactor = window.innerWidth / 1440
+    donutBox.position.x = donutBox.userData.baseX * scaleFactor
+    donutBox.position.y = (donutBox.userData.baseY + Math.sin(elapsedTime * 1.2) * 0.05) * scaleFactor
     donutBox.rotation.x = donutBox.userData.rotX
     donutBox.rotation.y = donutBox.userData.rotY
 
